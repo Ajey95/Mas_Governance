@@ -1,0 +1,33 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "MASGuardEval",
+  "theme": "mint",
+  "colors": {
+    "primary": "#087f7a"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Start here",
+            "pages": ["README", "QUICKSTART"]
+          },
+          {
+            "group": "Build",
+            "pages": ["SDK", "EXAMPLES"]
+          },
+          {
+            "group": "Concepts",
+            "pages": ["ARCHITECTURE", "METRICS"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "openapi": "openapi.json"
+      }
+    ]
+  }
+}
