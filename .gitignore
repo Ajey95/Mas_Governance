@@ -1,0 +1,10 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.egg-info/
+.agents/
+.codex/
+node_modules/
+dist/
+reports/latest_evaluation.json
+*.pyc
