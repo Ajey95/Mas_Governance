@@ -20,7 +20,7 @@
           },
           {
             "group": "Concepts",
-            "pages": ["ARCHITECTURE", "METRICS"]
+            "pages": ["ARCHITECTURE", "METRICS", "EXPERIMENTS"]
           }
         ]
       },

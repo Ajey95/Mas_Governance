@@ -22,6 +22,10 @@ This implementation follows the local project report and plan files. It is desig
 | JSON report generation | Implemented |
 | Backend tests | Passing |
 | Frontend production build | Passing |
+| Research experiment suite | Implemented |
+| Evaluator validation | Implemented |
+| Failure propagation analysis | Implemented |
+| Batch/scalability executor | Implemented |
 | Documentation package | Implemented |
 | OpenAPI schema | Implemented |
 
@@ -36,6 +40,7 @@ Full docs are available in [docs/](docs/):
 | [SDK Guide](docs/SDK.md) | Use MASGuardEval as a Python framework. |
 | [API Guide](docs/API.md) | Use the FastAPI service endpoints and interactive docs. |
 | [Examples](docs/EXAMPLES.md) | Copy-paste SDK, API, guard, and CI examples. |
+| [Experiments](docs/EXPERIMENTS.md) | Scenario tables, ablation, evaluator validation, propagation, and batch runs. |
 | [Metrics](docs/METRICS.md) | Metric formulas, direction, and interpretation. |
 | [Architecture](docs/ARCHITECTURE.md) | System design and extension points. |
 | [OpenAPI Schema](docs/openapi.json) | Machine-readable schema for docs tooling and clients. |
@@ -68,6 +73,7 @@ The repository README uses generated diagram images for quick scanning. The Merm
 - Metric engine for `TSP`, `TSR`, `PHR`, `CPI`, `CFP`, `RSS`, `CCR`, and `DT`.
 - Structured traces and spans for agent steps, tool calls, guard decisions, failure labels, and propagation metadata.
 - FastAPI backend endpoints for scenarios, single-scenario evaluation, and dashboard payloads.
+- Research rigor endpoints for experiments, ablations, evaluator agreement, propagation analysis, and batch execution.
 - React dashboard for scenario selection, metric comparison, trace inspection, and guard recommendations.
 - JSON report generation for reproducibility and downstream analysis.
 

@@ -126,3 +126,27 @@ Thresholds are defined in `MetricEngine.thresholds`.
 - `CPI` and `CCR` depend on trace annotations.
 - All scores are bounded between `0.0` and `1.0`.
 - Metric details include span IDs and counts used for debugging.
+
+## Evaluator Validation
+
+Semantic labels used for metric review can be validated with Cohen's Kappa:
+
+```text
+kappa = (p_o - p_e) / (1 - p_e)
+```
+
+Where:
+
+| Symbol | Meaning |
+| --- | --- |
+| `p_o` | Observed agreement between two evaluators. |
+| `p_e` | Expected agreement by chance from the marginal label distributions. |
+
+The implementation is `EvaluatorAgreement.cohens_kappa()` in `backend/masguardeval/evaluator.py`. It returns observed agreement, expected agreement, Kappa, label count, and a confusion table.
+
+Run:
+
+```powershell
+$env:PYTHONPATH="backend"
+py -3.11 scripts\run_evaluator_validation.py
+```

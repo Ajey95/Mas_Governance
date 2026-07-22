@@ -1,0 +1,40 @@
+{
+  "trace_id": "f7c8a209-3607-444b-a70f-d4860453e057",
+  "root_span_ids": [
+    "4992a936-68a0-4b17-8509-7dd5b322d605"
+  ],
+  "propagated_span_ids": [
+    "49ab7c36-81be-46f3-b7d2-a335fa65d967",
+    "16f51759-cd0d-47d0-9d3f-fd87b0a439ac",
+    "80a7ed60-4232-4811-9363-e816d2acf695"
+  ],
+  "edges": [
+    {
+      "source": "4992a936-68a0-4b17-8509-7dd5b322d605",
+      "target": "49ab7c36-81be-46f3-b7d2-a335fa65d967"
+    },
+    {
+      "source": "49ab7c36-81be-46f3-b7d2-a335fa65d967",
+      "target": "16f51759-cd0d-47d0-9d3f-fd87b0a439ac"
+    },
+    {
+      "source": "16f51759-cd0d-47d0-9d3f-fd87b0a439ac",
+      "target": "80a7ed60-4232-4811-9363-e816d2acf695"
+    },
+    {
+      "source": "80a7ed60-4232-4811-9363-e816d2acf695",
+      "target": "e653d008-e3e8-40f3-8aea-239adcb3bb0b"
+    }
+  ],
+  "paths": [
+    [
+      "4992a936-68a0-4b17-8509-7dd5b322d605",
+      "49ab7c36-81be-46f3-b7d2-a335fa65d967",
+      "16f51759-cd0d-47d0-9d3f-fd87b0a439ac",
+      "80a7ed60-4232-4811-9363-e816d2acf695",
+      "e653d008-e3e8-40f3-8aea-239adcb3bb0b"
+    ]
+  ],
+  "longest_path_length": 5,
+  "impact_score": 0.6
+}

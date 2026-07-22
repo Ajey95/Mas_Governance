@@ -7,8 +7,13 @@ from html import escape
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from pydantic import BaseModel, Field
 
+from .evaluator import EvaluatorAgreement
+from .experiments import ExperimentSuite
+from .propagation import PropagationAnalyzer
 from .runner import EvaluationEngine
+from .scaling import BatchEvaluationExecutor
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +25,7 @@ DOC_FILES = {
     "SDK.md": "SDK",
     "API.md": "API Guide",
     "EXAMPLES.md": "Examples",
+    "EXPERIMENTS.md": "Experiments",
     "METRICS.md": "Metrics",
     "ARCHITECTURE.md": "Architecture",
     "docs.json": "Docs Site Config",
@@ -27,6 +33,11 @@ DOC_FILES = {
 }
 
 engine = EvaluationEngine.from_dataset_path(DATASET_PATH)
+
+
+class AgreementRequest(BaseModel):
+    labels_a: list[str] = Field(min_length=1)
+    labels_b: list[str] = Field(min_length=1)
 
 app = FastAPI(
     title="MASGuardEval API",
@@ -69,6 +80,36 @@ def evaluate(scenario_id: str) -> dict[str, object]:
 @app.get("/dashboard")
 def dashboard() -> dict[str, object]:
     return engine.generate_dashboard()
+
+
+@app.get("/experiments")
+def experiments() -> dict[str, object]:
+    return ExperimentSuite(engine).run().to_dict()
+
+
+@app.get("/propagation/{scenario_id}")
+def propagation(scenario_id: str) -> dict[str, object]:
+    try:
+        result = engine.evaluate(scenario_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return PropagationAnalyzer().analyze(result.baseline_trace).to_dict()
+
+
+@app.get("/scalability/batch")
+def scalability_batch(max_workers: int = 4, chunk_size: int = 10) -> dict[str, object]:
+    try:
+        return BatchEvaluationExecutor(engine, max_workers=max_workers, chunk_size=chunk_size).run().to_dict()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/evaluator/agreement")
+def evaluator_agreement(payload: AgreementRequest) -> dict[str, object]:
+    try:
+        return EvaluatorAgreement.cohens_kappa(payload.labels_a, payload.labels_b).to_dict()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/project-docs", response_class=HTMLResponse)

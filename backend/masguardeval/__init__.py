@@ -13,9 +13,16 @@ from .guards import (
 )
 from .metrics import MetricEngine
 from .runner import EvaluationEngine
+from .evaluator import EvaluatorAgreement
+from .experiments import ExperimentSuite
+from .propagation import PropagationAnalyzer
+from .scaling import BatchEvaluationExecutor
 
 __all__ = [
     "EvaluationEngine",
+    "BatchEvaluationExecutor",
+    "EvaluatorAgreement",
+    "ExperimentSuite",
     "GoldenDataset",
     "Guard",
     "GuardDecision",
@@ -23,6 +30,7 @@ __all__ = [
     "LoopDetector",
     "MetricEngine",
     "ParameterValidator",
+    "PropagationAnalyzer",
     "RBACGuard",
     "ToolAllowlistGuard",
     "default_guards",

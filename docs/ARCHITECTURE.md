@@ -58,6 +58,10 @@ sequenceDiagram
 | Adapter | `backend/masguardeval/adapters.py` | Convert agent-system behavior into events. |
 | Guards | `backend/masguardeval/guards.py` | Intercept risky events before execution. |
 | Metrics | `backend/masguardeval/metrics.py` | Compute formula-based safety scores. |
+| Evaluator agreement | `backend/masguardeval/evaluator.py` | Compute Cohen's Kappa and confusion tables for label validation. |
+| Experiment suite | `backend/masguardeval/experiments.py` | Produce scenario tables, metric summaries, and guard ablations. |
+| Propagation analyzer | `backend/masguardeval/propagation.py` | Build rooted failure-propagation paths from trace spans. |
+| Batch executor | `backend/masguardeval/scaling.py` | Shard and run scenario batches with worker-aware execution. |
 | Runner | `backend/masguardeval/runner.py` | Execute baseline and guarded evaluations. |
 | API | `backend/masguardeval/api.py` | Expose evaluation results over HTTP. |
 | Dashboard | `frontend/src/` | Visualize scenarios, traces, metrics, and reports. |
@@ -125,10 +129,44 @@ Built-in guards:
 
 ## Scaling Notes
 
-The current prototype uses JSON datasets and in-process execution. For larger deployments:
+The current prototype uses JSON datasets and in-process execution, but it includes a batch executor for larger scenario suites.
+
+Implemented scaling surface:
+
+- `BatchEvaluationExecutor` shards scenario IDs by `chunk_size`.
+- Local thread execution runs scenario batches with `max_workers`.
+- The shard manifest is serializable, so queue workers or remote executors can consume the same contract later.
+- `GET /scalability/batch` exposes batch results through the API.
+
+For larger deployments:
 
 - Store datasets and traces in PostgreSQL.
 - Store embeddings or semantic annotations in pgvector.
-- Run scenario batches asynchronously.
+- Run scenario batches asynchronously using the shard manifest.
 - Export OpenAPI and dashboard payloads as stable integration contracts.
 - Keep guard and adapter interfaces stable for external users.
+
+## Failure Propagation Formalism
+
+`PropagationAnalyzer` models a trace as a directed graph:
+
+```text
+G = (V, E)
+V = spans
+E = parent_span_id edges plus explicit propagated_from edges
+```
+
+Root failures are spans with a failure label that are not themselves propagated. Propagated failures are spans with `metadata.propagated_from` or the `cascading_failure` label.
+
+The analyzer returns:
+
+- root span IDs
+- propagated span IDs
+- directed edges
+- rooted paths
+- longest path length
+- impact score
+
+```text
+impact_score = count(propagated spans) / count(all spans)
+```

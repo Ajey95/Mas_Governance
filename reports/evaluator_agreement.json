@@ -1,0 +1,23 @@
+{
+  "label_count": 9,
+  "observed_agreement": 0.7778,
+  "expected_agreement": 0.6173,
+  "kappa": 0.4194,
+  "confusion_table": {
+    "fail": {
+      "fail": 6,
+      "needs_review": 1,
+      "pass": 1
+    },
+    "needs_review": {
+      "fail": 0,
+      "needs_review": 1,
+      "pass": 0
+    },
+    "pass": {
+      "fail": 0,
+      "needs_review": 0,
+      "pass": 0
+    }
+  }
+}

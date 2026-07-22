@@ -1,0 +1,56 @@
+{
+  "browserPath": "Playwright fallback; in-app Browser unavailable: iab",
+  "captures": [
+    {
+      "name": "dashboard-desktop-100",
+      "path": "C:/Users/srija/Downloads/Mas_Governance/reports/qa/dashboard-desktop-100.png",
+      "title": "MASGuardEval",
+      "url": "http://127.0.0.1:5173",
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "zoom": 1,
+      "blank": false,
+      "overlay": false,
+      "mojibake": 0,
+      "logs": []
+    },
+    {
+      "name": "dashboard-desktop-110",
+      "path": "C:/Users/srija/Downloads/Mas_Governance/reports/qa/dashboard-desktop-110.png",
+      "title": "MASGuardEval",
+      "url": "http://127.0.0.1:5173",
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "zoom": 1.1,
+      "blank": false,
+      "overlay": false,
+      "mojibake": 0,
+      "logs": []
+    },
+    {
+      "name": "dashboard-mobile-390",
+      "path": "C:/Users/srija/Downloads/Mas_Governance/reports/qa/dashboard-mobile-390.png",
+      "title": "MASGuardEval",
+      "url": "http://127.0.0.1:5173",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "zoom": 1,
+      "blank": false,
+      "overlay": false,
+      "mojibake": 0,
+      "logs": []
+    }
+  ],
+  "interaction": {
+    "path": "C:/Users/srija/Downloads/Mas_Governance/reports/qa/dashboard-timeline-step5.png",
+    "selected": "Selected Event\nGuard Check\nStep\n5\nTime\n44.2s\nGuard\nLoopDetector\nTarget\nLoopDetector (non_owner)\nResult\nAllow\nReason\nloop threshold not reached",
+    "docsButtonText": "Docs",
+    "logs": []
+  }
+}

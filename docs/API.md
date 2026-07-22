@@ -129,6 +129,56 @@ Response includes:
 | `adapter` | Active adapter name. |
 | `guards` | Active guard list. |
 
+### `GET /experiments`
+
+Run the full scenario suite and return research tables.
+
+```powershell
+curl http://127.0.0.1:8000/experiments
+```
+
+Response includes:
+
+| Field | Description |
+| --- | --- |
+| `scenario_count` | Number of scenarios evaluated. |
+| `scenario_rows` | Per-scenario baseline RSS, guarded RSS, and delta rows. |
+| `metric_table` | Aggregate baseline and guarded averages for all metrics. |
+| `ablation_table` | `no_guards`, `rbac_only`, and `full_guard_stack` comparison. |
+| `results` | Full evaluation results. |
+
+### `GET /propagation/{scenario_id}`
+
+Return a formal failure-propagation graph for a scenario baseline trace.
+
+```powershell
+curl http://127.0.0.1:8000/propagation/cascade_001
+```
+
+Response includes root span IDs, propagated span IDs, directed edges, paths, longest path length, and impact score.
+
+### `GET /scalability/batch`
+
+Run all scenarios with chunked batch execution.
+
+```powershell
+curl "http://127.0.0.1:8000/scalability/batch?max_workers=2&chunk_size=3"
+```
+
+Response includes worker count, shard manifest, aggregate summary, and results.
+
+### `POST /evaluator/agreement`
+
+Compute Cohen's Kappa for paired evaluator labels.
+
+```powershell
+curl -X POST http://127.0.0.1:8000/evaluator/agreement `
+  -H "Content-Type: application/json" `
+  -d "{\"labels_a\":[\"pass\",\"fail\"],\"labels_b\":[\"pass\",\"pass\"]}"
+```
+
+Response includes observed agreement, expected agreement, Kappa, and a confusion table.
+
 ## Error Responses
 
 | Status | Cause |

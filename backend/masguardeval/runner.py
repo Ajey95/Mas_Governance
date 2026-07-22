@@ -21,7 +21,7 @@ class EvaluationEngine:
     ) -> None:
         self.dataset = dataset
         self.adapter = adapter or DeterministicWorkspaceAdapter()
-        self.guards = guards or default_guards()
+        self.guards = default_guards() if guards is None else guards
         self.metric_engine = metric_engine or MetricEngine()
         self.registered_agents: set[str] = set()
         self.registered_tools: set[str] = set()

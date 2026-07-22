@@ -17,6 +17,7 @@ MASGuardEval helps answer four practical questions:
 | Use MASGuardEval as a Python SDK | [SDK guide](SDK.md) |
 | Call the backend over HTTP | [API guide](API.md) and live Swagger UI |
 | Understand metric formulas | [Metrics reference](METRICS.md) |
+| Run research experiments | [Experiments](EXPERIMENTS.md) |
 | Integrate another agent framework | [Architecture](ARCHITECTURE.md) |
 | Copy common examples | [Examples](EXAMPLES.md) |
 
@@ -29,6 +30,7 @@ MASGuardEval helps answer four practical questions:
 | [API guide](API.md) | You want to call MASGuardEval from another service or frontend. |
 | [Examples](EXAMPLES.md) | You want copy-paste snippets for common workflows. |
 | [Metrics reference](METRICS.md) | You need the exact mathematical formulas and pass thresholds. |
+| [Experiments](EXPERIMENTS.md) | You need broader scenario tables, ablations, evaluator validation, propagation analysis, or batch execution. |
 | [Architecture](ARCHITECTURE.md) | You need system design, extension points, and scaling notes. |
 
 ## What You Can Build
