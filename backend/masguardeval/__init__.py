@@ -27,7 +27,7 @@ from .frameworks import (
     FrameworkSession, FrameworkToolBlocked, ToolSpec,
     make_autogen_tool, make_crewai_tool, make_langchain_tool, make_langgraph_tool_node,
 )
-from .langgraph_runtime import LangGraphRun, run_langgraph_graph
+from .langgraph_runtime import LangGraphRun, private_postgres_checkpointer, run_langgraph_graph
 from .runner import EvaluationEngine
 from .evaluator import EvaluatorAgreement
 from .experiments import ExperimentSuite
@@ -66,6 +66,7 @@ __all__ = [
     "make_langgraph_tool_node",
     "LangGraphRun",
     "run_langgraph_graph",
+    "private_postgres_checkpointer",
     "ModelClient",
     "ModelOutput",
     "OpenAIResponsesClient",

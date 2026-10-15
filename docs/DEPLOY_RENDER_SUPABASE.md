@@ -21,7 +21,8 @@ The Supabase security advisor reports two informational [`rls_enabled_no_policy`
 ## Provisioning order
 
 1. Set `MASGUARDEVAL_DATABASE_URL` in Render to a session-pooler PostgreSQL connection string from the project. Set `MASGUARDEVAL_SITE_TOKEN` to a strong private-preview token. The Blueprint refuses to start without these values. Keep any LLM and LangSmith keys in Render secrets only if their live integrations are enabled.
-2. Connect the reviewed Git repository and deploy the Render Blueprint. Verify `/health`, the login gate, dashboard, one streamed run, saved spans, graph, and findings through the deployed URL. Restart the service and verify that the trace still exists in Supabase.
+2. Connect the reviewed Git repository and deploy the Render Blueprint. Verify `/health`, the login gate, dashboard, one streamed run, saved spans, graph, and findings through the deployed URL. Redeploy the service and verify that the trace still exists in Supabase.
+3. Run `POST /langgraph/reference-run` through the authenticated preview, then read its saved trace and graph. This exercises LangGraph node/route observation and the private-schema PostgreSQL checkpointer on the Render-to-Supabase path.
 
 The site token is a **shared preview gate**. It prevents anonymous access but does not identify separate users or isolate their traces. Keep the deployment private to the research team until per-user authentication and tenant isolation are implemented and tested. Do not use real customer secrets, emails, or private tool traces in the preview.
 

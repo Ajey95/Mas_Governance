@@ -7,10 +7,11 @@ COPY frontend/src ./src
 RUN npm run build
 
 FROM python:3.12-slim
+ENV LANGGRAPH_STRICT_MSGPACK=true
 RUN useradd --create-home --uid 1000 user
 WORKDIR /home/user/app
 COPY --chown=user:user backend ./backend
-RUN pip install --no-cache-dir -e './backend[postgres,pgvector,langgraph]'
+RUN pip install --no-cache-dir -e './backend[postgres,pgvector,langgraph-postgres]'
 COPY --chown=user:user datasets/golden_scenarios.json ./datasets/golden_scenarios.json
 COPY --chown=user:user docs ./docs
 COPY --from=frontend --chown=user:user /build/frontend/dist ./frontend/dist

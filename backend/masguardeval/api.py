@@ -25,6 +25,7 @@ from .approvals import ApprovalBroker
 from .graph import AgentToolGraphBuilder
 from .findings import analyze_trace
 from .models import Scenario, Trace
+from .reference_langgraph import run_reference_langgraph
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -124,6 +125,22 @@ def saved_runs(limit: int = 50) -> list[dict[str, object]]:
         return trace_store.list(limit)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/langgraph/reference-run")
+def langgraph_reference_run() -> dict[str, object]:
+    """Persist a bounded fictional graph trace to verify the native integration."""
+    result = run_reference_langgraph(
+        engine.dataset.get("auth_001"), trace_store,
+        database_url=os.environ.get("MASGUARDEVAL_DATABASE_URL"),
+    )
+    return {
+        "trace_id": result.trace.trace_id,
+        "checkpoint_id": result.checkpoint_id,
+        "blocked": result.trace.blocked,
+        "span_count": len(result.trace.spans),
+        "reference_only": True,
+    }
 
 
 @app.get("/runs/{trace_id}")

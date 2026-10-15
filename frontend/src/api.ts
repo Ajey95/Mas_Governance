@@ -21,6 +21,11 @@ export const fetchSavedRun = (id: string) => getJson<Trace>(`/runs/${encodeURICo
 export const fetchSavedGraph = (id: string) => getJson<AgentToolGraph>(`/runs/${encodeURIComponent(id)}/graph`);
 export const fetchSavedFindings = (id: string) => getJson<FindingsReport>(`/runs/${encodeURIComponent(id)}/findings`);
 export const fetchApprovals = (token: string) => getJson<ApprovalRequest[]>("/approvals", token);
+export async function runLangGraphReference(): Promise<{ trace_id: string; checkpoint_id: string | null; reference_only: boolean }> {
+  const response = await fetch(`${apiBase}/langgraph/reference-run`, { method: "POST" });
+  if (!response.ok) throw new Error(`LangGraph reference run failed: ${response.status}`);
+  return response.json();
+}
 export async function decideApproval(id: string, token: string, approve: boolean, reason: string): Promise<void> {
   const response = await fetch(`${apiBase}/approvals/${encodeURIComponent(id)}`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ approve, reason }) });
   if (!response.ok) throw new Error(`Approval decision failed: ${response.status}`);

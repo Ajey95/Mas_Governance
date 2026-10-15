@@ -16,6 +16,7 @@ dependencies = [
 live = ["openai>=1.68"]
 langchain = ["langchain>=1.0,<2"]
 langgraph = ["langchain-core>=0.3.84,<2", "langgraph>=0.3.34,<2"]
+langgraph-postgres = ["langgraph==0.3.34", "langchain-core>=0.3.84,<1", "langgraph-checkpoint-postgres==2.0.25", "psycopg[binary]>=3.2,<4"]
 autogen = ["autogen-core>=0.4,<1", "autogen-agentchat>=0.4,<1"]
 crewai = ["crewai>=1.0,<2"]
 postgres = ["psycopg[binary]>=3.2,<4"]

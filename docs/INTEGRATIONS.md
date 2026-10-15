@@ -93,12 +93,16 @@ comparability with runs recorded before this integration. Tool actions remain
 guarded at the wrapped tool boundary. A graph node that performs an unwrapped
 side effect can still bypass that boundary; instrument every such action.
 
-For production checkpoints, LangGraph provides `PostgresSaver` in
-`langgraph-checkpoint-postgres`: create it with the server-side database DSN,
-call `setup()` once, and compile the graph with it. On Supabase, restrict the
-checkpoint tables to a private schema and service role before storing any
-private state. This integration has been tested with `MemorySaver`; a live
-Supabase-backed LangGraph checkpoint round trip remains an operational gate.
+For durable checkpoints on Supabase, install `backend[langgraph-postgres]`
+and use `private_postgres_checkpointer(dsn)` as a context manager around graph
+compilation and execution. It selects the unexposed `masguardeval` schema,
+runs LangGraph's checkpoint setup, enables RLS, and revokes direct client-role
+table access. LangGraph checkpoints contain full graph state, unlike the
+value-redacted observation spans, so only put fictional or approved data in
+the reference workflow. The web dashboard's **Run LangGraph reference**
+button calls `POST /langgraph/reference-run` with a bounded fictional metadata
+search and stores its graph trace; it is integration verification, not a paper
+study run.
 
 ## PostgreSQL trace storage
 

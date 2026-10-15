@@ -7,6 +7,8 @@ gateway. Graph observations describe topology; only wrapped tools are guarded.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import contextmanager
+from collections.abc import Iterator
 from typing import Any
 
 from .frameworks import FrameworkSession, FrameworkToolBlocked
@@ -20,6 +22,29 @@ class LangGraphRun:
     interrupted: bool
     checkpoint_id: str | None
     next_nodes: tuple[str, ...]
+
+
+@contextmanager
+def private_postgres_checkpointer(dsn: str) -> Iterator[Any]:
+    """Keep LangGraph checkpoints inside the unexposed MASGuardEval schema."""
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+        from langgraph.checkpoint.postgres import PostgresSaver
+    except ImportError as exc:
+        raise RuntimeError("Install backend[langgraph-postgres] for durable checkpoints") from exc
+
+    with psycopg.connect(dsn, autocommit=True, row_factory=dict_row) as connection:
+        connection.execute("SET search_path TO masguardeval")
+        if connection.execute("SELECT current_schema() AS name").fetchone()["name"] != "masguardeval":
+            raise RuntimeError("Private masguardeval schema is unavailable")
+        checkpointer = PostgresSaver(connection)
+        checkpointer.setup()
+        # The schema is not exposed through Supabase's Data API; RLS is defense in depth.
+        for table in ("checkpoint_migrations", "checkpoints", "checkpoint_blobs", "checkpoint_writes"):
+            connection.execute(f"ALTER TABLE masguardeval.{table} ENABLE ROW LEVEL SECURITY")
+            connection.execute(f"REVOKE ALL ON masguardeval.{table} FROM anon, authenticated")
+        yield checkpointer
 
 
 def _part(chunk: Any) -> tuple[tuple[str, ...], str, Any]:

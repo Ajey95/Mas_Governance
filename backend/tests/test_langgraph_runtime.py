@@ -4,7 +4,8 @@ from typing import TypedDict
 
 import pytest
 
-from masguardeval import FrameworkSession, GoldenDataset, ToolSpec, make_langgraph_tool_node, run_langgraph_graph
+from masguardeval import FrameworkSession, GoldenDataset, ToolSpec, TraceStore, make_langgraph_tool_node, run_langgraph_graph
+from masguardeval.reference_langgraph import run_reference_langgraph
 
 
 pytest.importorskip("langgraph")
@@ -92,3 +93,15 @@ def test_guarded_tool_node_stops_graph_before_handler():
     assert called == []
     assert result.trace.blocked
     assert any(span.policy_decision == "BLOCK" for span in result.trace.spans)
+
+
+def test_reference_graph_persists_nodes_tool_and_checkpoint(tmp_path):
+    store = TraceStore(tmp_path / "runs.sqlite3")
+    run = run_reference_langgraph(_scenario(), store)
+    saved = store.get(run.trace.trace_id)
+    assert saved is not None
+    assert run.checkpoint_id
+    assert not run.trace.blocked
+    assert any(span["span_type"] == "tool_call" for span in saved["spans"])
+    assert any(span["span_type"] == "graph_transition" for span in saved["spans"])
+    assert {span["agent"] for span in saved["spans"] if span["span_type"] == "graph_node"} == {"search_metadata", "summarize"}
