@@ -106,6 +106,19 @@ fictional data to pause and resume a graph across separate checkpointer
 connections, producing two linked traces. These are integration checks, not
 paper study runs or human approval decisions.
 
+The local dashboard also exposes `POST /langgraph/nested-probe` with an
+optional `blocked_branch=true` query parameter. Its two nested subgraphs and
+outer conditional loop exercise repeated reason–act cycles, observed routes,
+and a prohibited mock tool. This deterministic topology probe is not an LLM
+reasoning trial. For model-driven ReAct *inside* a traced LangGraph, use
+`run_model_react_langgraph(scenario, client, model_name=..., max_steps=...)`.
+It asks the model for one JSON action at each reason node, passes tool actions
+through `FrameworkSession`, feeds the observed result into the next reason
+node, and stops at a finite step cap. See [`examples/langgraph_react.py`](../examples/langgraph_react.py)
+for a local Ollama entry point. The model chooses actions, but this helper
+uses only fictional mock-workspace tools; real agent behavior and the metric
+study still need independent trials.
+
 ## PostgreSQL trace storage
 
 Set `MASGUARDEVAL_DATABASE_URL` to a PostgreSQL DSN before starting the API. The API and `scripts/run_live_experiment.py` then use `PostgresTraceStore`; otherwise they use SQLite. The store creates `masguardeval.masguardeval_runs` and `masguardeval.masguardeval_spans` in a dedicated private schema, keeps scenario snapshots and span payloads in JSONB, and exposes the same `begin`, `append`, `finish`, `get`, and `list` methods as SQLite. It enables RLS without client policies. Keep the DSN in a server environment variable, never in a frontend bundle, report, or committed file.

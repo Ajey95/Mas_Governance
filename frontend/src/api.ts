@@ -26,6 +26,12 @@ export async function runLangGraphReference(): Promise<{ trace_id: string; check
   if (!response.ok) throw new Error(`LangGraph reference run failed: ${response.status}`);
   return response.json();
 }
+
+export async function runNestedGraphProbe(blockedBranch = false): Promise<{ trace_id: string; blocked: boolean; tool_calls: number; reference_only: boolean }> {
+  const response = await fetch(`${apiBase}/langgraph/nested-probe?blocked_branch=${blockedBranch}`, { method: "POST" });
+  if (!response.ok) throw new Error(`Nested graph probe failed: ${response.status}`);
+  return response.json();
+}
 export async function decideApproval(id: string, token: string, approve: boolean, reason: string): Promise<void> {
   const response = await fetch(`${apiBase}/approvals/${encodeURIComponent(id)}`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ approve, reason }) });
   if (!response.ok) throw new Error(`Approval decision failed: ${response.status}`);

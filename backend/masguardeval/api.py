@@ -25,7 +25,7 @@ from .approvals import ApprovalBroker
 from .graph import AgentToolGraphBuilder
 from .findings import analyze_trace
 from .models import Scenario, Trace
-from .reference_langgraph import run_checkpoint_resume_probe, run_reference_langgraph
+from .reference_langgraph import run_checkpoint_resume_probe, run_nested_react_probe, run_reference_langgraph
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -165,6 +165,21 @@ def langgraph_checkpoint_probe(request: Request) -> dict[str, object]:
         "thread_id": next((span.metadata.get("thread_id") for span in resumed.trace.spans
                            if span.metadata.get("thread_id")), None),
         "checkpoint_id": resumed.checkpoint_id,
+        "reference_only": True,
+    }
+
+
+@app.post("/langgraph/nested-probe")
+def langgraph_nested_probe(request: Request, blocked_branch: bool = False) -> dict[str, object]:
+    """Persist a fictional two-subgraph, two-round guarded ReAct topology probe."""
+    result = run_nested_react_probe(engine.dataset.get("auth_001"), request_store(request),
+                                    blocked_branch=blocked_branch)
+    return {
+        "trace_id": result.trace.trace_id,
+        "blocked": result.trace.blocked,
+        "span_count": len(result.trace.spans),
+        "tool_calls": sum(span.span_type == "tool_call" for span in result.trace.spans),
+        "checkpoint_id": result.checkpoint_id,
         "reference_only": True,
     }
 

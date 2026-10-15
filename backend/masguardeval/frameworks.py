@@ -88,13 +88,17 @@ class FrameworkSession:
         trace_store: RunStore | None = None,
         approval_handler: Callable[[Trace, ExecutionEvent], bool | ApprovalOutcome] | None = None,
         on_span: Callable[[Span], None] | None = None,
+        max_events: int = 100,
     ) -> None:
         if mode not in {"baseline", "guarded"}:
             raise ValueError("mode must be baseline or guarded")
+        if not 1 <= max_events <= 10_000:
+            raise ValueError("max_events must be 1..10000")
         self.scenario = scenario
         self.mode = mode
         self.adapter = _BridgeAdapter(framework_name)
-        self.engine = EvaluationEngine(GoldenDataset([scenario]), adapter=self.adapter, trace_store=trace_store)
+        self.engine = EvaluationEngine(GoldenDataset([scenario]), adapter=self.adapter,
+                                       trace_store=trace_store, max_events=max_events)
         self.approval_handler = approval_handler
         self.on_span = on_span
         self.trace: Trace | None = None
