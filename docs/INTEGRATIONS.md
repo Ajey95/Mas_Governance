@@ -53,6 +53,53 @@ The example shows the four wrapper shapes. In an actual run, create **a separate
 
 For multi-agent topology, call `session.agent_step(...)` and `session.message(sender, recipient, content)` from the framework's agent and message hooks. Native tool wrappers alone record tool calls; they cannot infer unseen internal agent messages or model tokens.
 
+## LangGraph runtime tracing
+
+For a compiled LangGraph, run it through `run_langgraph_graph` instead of calling
+`graph.invoke` directly. The runner consumes LangGraph's runtime stream and
+records executed nodes, conditional routes, checkpoint IDs, and interrupt or
+resume events. The `thread_id` joins separate MASGuardEval traces across a
+pause. Only actual routes are included in the observed graph; unchosen static
+branches are not reported as executed.
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import Command
+from masguardeval import FrameworkSession, run_langgraph_graph
+
+# Keep the same checkpointer across invocations. build_graph creates a fresh
+# StateGraph and wraps its tools with the supplied session before compilation.
+checkpointer = MemorySaver()
+config = {"configurable": {"thread_id": "fictional-case-001"}}
+session = FrameworkSession(scenario, mode="guarded", framework_name="langgraph")
+first = run_langgraph_graph(build_graph(session, checkpointer), session, initial_state, config=config)
+if first.interrupted:
+    # Obtain an authorized human decision before resuming the same thread.
+    resumed_session = FrameworkSession(scenario, mode="guarded", framework_name="langgraph")
+    resumed = run_langgraph_graph(
+        build_graph(resumed_session, checkpointer), resumed_session,
+        Command(resume=approved_value), config=config,
+    )
+```
+
+In `build_graph`, create and register the guarded tool node before calling
+`run_langgraph_graph`. Rebuild with the new session on resume so a resumed
+tool call does not reuse a closed session.
+The example `MemorySaver` is only for local testing; use a durable LangGraph
+checkpointer for deployed pause/resume. The runtime recorder stores state key
+names and checkpoint IDs, not state values or LLM tokens. Its graph observation
+spans are excluded from the eight research metric denominators, preserving
+comparability with runs recorded before this integration. Tool actions remain
+guarded at the wrapped tool boundary. A graph node that performs an unwrapped
+side effect can still bypass that boundary; instrument every such action.
+
+For production checkpoints, LangGraph provides `PostgresSaver` in
+`langgraph-checkpoint-postgres`: create it with the server-side database DSN,
+call `setup()` once, and compile the graph with it. On Supabase, restrict the
+checkpoint tables to a private schema and service role before storing any
+private state. This integration has been tested with `MemorySaver`; a live
+Supabase-backed LangGraph checkpoint round trip remains an operational gate.
+
 ## PostgreSQL trace storage
 
 Set `MASGUARDEVAL_DATABASE_URL` to a PostgreSQL DSN before starting the API. The API and `scripts/run_live_experiment.py` then use `PostgresTraceStore`; otherwise they use SQLite. The store creates `masguardeval.masguardeval_runs` and `masguardeval.masguardeval_spans` in a dedicated private schema, keeps scenario snapshots and span payloads in JSONB, and exposes the same `begin`, `append`, `finish`, `get`, and `list` methods as SQLite. It enables RLS without client policies. Keep the DSN in a server environment variable, never in a frontend bundle, report, or committed file.

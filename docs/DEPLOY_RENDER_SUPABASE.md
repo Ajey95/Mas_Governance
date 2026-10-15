@@ -5,7 +5,7 @@ This is the selected deployment path for MASGuardEval. Render runs the React das
 ## Prepared files
 
 - [`render.yaml`](../render.yaml) defines the Render web service, health check, and required secret prompts.
-- [`deploy/render/Dockerfile`](../deploy/render/Dockerfile) builds the frontend and Python API into one image.
+- [`Dockerfile`](../Dockerfile) builds the frontend and Python API into one image, including the LangGraph runtime adapter.
 - [`deploy/supabase/bootstrap.sql`](../deploy/supabase/bootstrap.sql) creates the private trace schema and pgvector extension.
 - [`supabase/migrations/20261015085327_masguardeval_bootstrap.sql`](../supabase/migrations/20261015085327_masguardeval_bootstrap.sql) is the CLI-managed copy of that schema, aligned with the hosted migration history.
 - `masguardeval.web:app` serves the frontend and API from one origin and requires a site token when the Render preview flag is enabled.

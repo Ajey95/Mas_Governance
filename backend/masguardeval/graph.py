@@ -28,7 +28,28 @@ class AgentToolGraphBuilder:
             nodes.setdefault(key, {"id": key, "label": name, "kind": "tool", "policy": policy, "is_root_failure": False})
             return key
 
+        def add_graph_node(namespace: str, name: str) -> str:
+            key = f"graph:{namespace}:{name}"
+            nodes.setdefault(key, {"id": key, "label": name, "kind": "graph_node", "namespace": namespace, "is_root_failure": False})
+            return key
+
         for span in trace.spans:
+            if span.span_type == "graph_node":
+                add_graph_node(str(span.metadata.get("namespace", "")), span.agent)
+            if span.span_type == "graph_transition":
+                namespace = str(span.metadata.get("namespace", ""))
+                source = add_graph_node(namespace, str(span.metadata["source"]))
+                target = add_graph_node(namespace, str(span.metadata["target"]))
+                edges.append({
+                    "id": span.span_id, "source": source, "target": target,
+                    "kind": "graph_transition", "span_id": span.span_id,
+                    "timestamp": span.timestamp, "decision": None, "guard": None,
+                    "failure_label": None, "is_root_failure": False,
+                    "is_propagated_failure": False, "parameters": {},
+                    "parent_span_id": span.parent_span_id,
+                    "step": span.metadata.get("step"),
+                })
+                continue
             if span.span_type in {"agent_step", "inter_agent_message", "tool_call"} and span.agent != "Adapter":
                 add_agent(span.agent)
                 if span.span_id in roots:

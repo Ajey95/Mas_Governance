@@ -10,7 +10,7 @@ FROM python:3.12-slim
 RUN useradd --create-home --uid 1000 user
 WORKDIR /home/user/app
 COPY --chown=user:user backend ./backend
-RUN pip install --no-cache-dir -e './backend[postgres,pgvector]'
+RUN pip install --no-cache-dir -e './backend[postgres,pgvector,langgraph]'
 COPY --chown=user:user datasets/golden_scenarios.json ./datasets/golden_scenarios.json
 COPY --chown=user:user docs ./docs
 COPY --from=frontend --chown=user:user /build/frontend/dist ./frontend/dist

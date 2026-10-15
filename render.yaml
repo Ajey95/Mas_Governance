@@ -2,8 +2,9 @@ services:
   - type: web
     name: masguardeval
     runtime: docker
+    plan: free
     region: singapore
-    dockerfilePath: ./deploy/render/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
     envVars:

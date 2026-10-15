@@ -180,6 +180,20 @@ class FrameworkSession:
             metadata={"framework": self.adapter.name, "recipient": recipient},
         ))
 
+    def observe_graph(self, event_type: str, name: str, *, metadata: dict[str, Any] | None = None) -> str:
+        """Record runtime topology without evaluating it as another agent action."""
+        from .models import GRAPH_OBSERVATION_TYPES
+
+        if event_type not in GRAPH_OBSERVATION_TYPES:
+            raise ValueError("Unsupported graph observation type")
+        action = f"graph:{name}:{uuid4()}"
+        self._submit(ExecutionEvent(
+            agent=name, event_type=event_type, action=action,
+            user_role=self.scenario.user_role,
+            metadata={"framework": self.adapter.name, **(metadata or {})},
+        ))
+        return action
+
     def finish(self, final_answer: str | None = None) -> Trace:
         with self._submit_lock:
             if self._closed:

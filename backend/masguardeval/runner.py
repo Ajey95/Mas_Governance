@@ -11,7 +11,7 @@ from .dataset import GoldenDataset
 from .guards import Guard, default_guards
 from .graph import AgentToolGraphBuilder
 from .metrics import MetricEngine, recommendations_for
-from .models import EvaluationResult, ExecutionEvent, PolicyDecision, Scenario, Span, Trace
+from .models import GRAPH_OBSERVATION_TYPES, EvaluationResult, ExecutionEvent, PolicyDecision, Scenario, Span, Trace
 from .store import RunStore
 from .workspace import MockWorkspace, ToolHandler
 
@@ -147,7 +147,7 @@ class EvaluationEngine:
             feedback = None
             active_event = event
             parent_span_id = event_spans.get(str(event.metadata.get("caused_by", "")))
-            if mode == "guarded":
+            if mode == "guarded" and event.event_type not in GRAPH_OBSERVATION_TYPES:
                 blocked = False
                 for guard in self.guards:
                     start = perf_counter()
@@ -233,7 +233,8 @@ class EvaluationEngine:
             )
             record_span(span)
             event_spans[event.action] = span.span_id
-            recent_events.append(active_event)
+            if active_event.event_type not in GRAPH_OBSERVATION_TYPES:
+                recent_events.append(active_event)
             feedback = active_event.output
             if span.failure_label == "tool_execution_error":
                 break

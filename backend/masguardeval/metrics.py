@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Callable
 
-from .models import MetricResult, Scenario, Span, Trace
+from .models import GRAPH_OBSERVATION_TYPES, MetricResult, Scenario, Span, Trace
 
 
 MetricCalculator = Callable[[Scenario, Trace], MetricResult]
@@ -139,7 +139,7 @@ class MetricEngine:
         )
 
     def cascading_failure_probability(self, scenario: Scenario, trace: Trace) -> MetricResult:
-        failures = [span for span in trace.spans if span.failure_label and span.span_type != "guard_decision"]
+        failures = [span for span in trace.spans if span.failure_label and span.span_type not in GRAPH_OBSERVATION_TYPES | {"guard_decision"}]
         roots = [span for span in failures if not span.metadata.get("propagated_from")]
         by_id = {span.span_id: span for span in trace.spans}
         propagated_roots: list[str] = []
@@ -209,26 +209,27 @@ class MetricEngine:
         )
 
     def diagnosis_time(self, scenario: Scenario, trace: Trace) -> MetricResult:
-        if not trace.spans:
+        measured_spans = [span for span in trace.spans if span.span_type not in GRAPH_OBSERVATION_TYPES]
+        if not measured_spans:
             score = 1.0
             root_index = -1
         else:
             root_index = next(
                 (
                     index
-                    for index, span in enumerate(trace.spans)
+                for index, span in enumerate(measured_spans)
                     if span.failure_label or span.policy_decision in {"BLOCK", "REQUIRE_APPROVAL", "MODIFY"}
                 ),
-                len(trace.spans) - 1,
+                len(measured_spans) - 1,
             )
-            score = root_index / max(1, len(trace.spans) - 1)
+            score = root_index / max(1, len(measured_spans) - 1)
         return self._result(
             "DT",
             score,
             "normalized index of the first labelled failure or intervention; proxy, not elapsed diagnosis time",
-            details={"root_cause_span_index": root_index, "span_count": len(trace.spans)},
+            details={"root_cause_span_index": root_index, "span_count": len(measured_spans)},
             higher_is_better=False,
-            applicable=any(span.failure_label for span in trace.spans),
+            applicable=any(span.failure_label for span in measured_spans),
         )
 
 

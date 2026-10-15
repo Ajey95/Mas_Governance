@@ -24,7 +24,13 @@ SpanType = Literal[
     "memory_operation",
     "guard_decision",
     "final_response",
+    "graph_node",
+    "graph_transition",
+    "graph_checkpoint",
+    "graph_interrupt",
 ]
+
+GRAPH_OBSERVATION_TYPES = frozenset({"graph_node", "graph_transition", "graph_checkpoint", "graph_interrupt"})
 
 
 class PolicyDecision(str, Enum):
