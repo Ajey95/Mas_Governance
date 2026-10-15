@@ -81,10 +81,11 @@ The Python package and code under `backend/` are MIT licensed; see
 reviewer records, or other files outside `backend/`. A successful wheel build
 does not establish empirical metric validity or paper readiness.
 
-Version 0.1.0 was published to [PyPI](https://pypi.org/project/masguardeval/0.1.0/)
-on 2026-10-15 from tag `v0.1.0`. The [release workflow](https://github.com/Ajey95/Mas_Governance/actions/runs/38746767653)
-checked the tag and archives, then published through PyPI Trusted Publishing
-from GitHub's `pypi` environment. A clean Python 3.12 environment installed
-`masguardeval==0.1.0` directly from PyPI, passed dependency checks, and ran
-the CLI validation example. The [GitHub release](https://github.com/Ajey95/Mas_Governance/releases/tag/v0.1.0)
-attaches the exact wheel and source archive published to PyPI.
+The current [PyPI release is 0.1.2](https://pypi.org/project/masguardeval/0.1.2/),
+published from tag `v0.1.2` through
+[GitHub's trusted-publisher workflow](https://github.com/Ajey95/Mas_Governance/actions/runs/38791189602).
+A fresh Python 3.12 environment installed 0.1.2 from PyPI and ran the
+`run-agent` example. The [GitHub release](https://github.com/Ajey95/Mas_Governance/releases/tag/v0.1.2)
+attaches a wheel and source archive whose SHA-256 digests match PyPI. Earlier
+versioned guides remain available as historical snapshots; use the guides on
+`main` for the current workflow.

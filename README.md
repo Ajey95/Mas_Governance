@@ -8,6 +8,11 @@ MASGuardEval is a research **reference implementation** for tracing and testing 
 
 The default adapter supplies scripted agent intents. A model-driven adapter has completed a local Ollama pilot and a small external OpenAI service smoke; independently adjudicated trials remain outstanding. Reached tools execute in a fresh, in-memory mock workspace; no real email account, file system, or shell command is used. The included results are **not evidence that a real multi-agent LLM is safe**. See [Research status](docs/RESEARCH_STATUS.md) before using results in a paper.
 
+For current installation, CLI, and SDK instructions, use the maintained
+[documentation index](docs/README.md) or [official docs site](https://masguardeval.onrender.com/docs/).
+GitHub URLs pinned to a release tag such as `v0.1.0` describe that older
+release and remain available as historical snapshots.
+
 ## Current implementation
 
 | Component | State |

@@ -7,10 +7,38 @@ AutoGen, and CrewAI are in the [examples](../examples/README.md).
 
 ## Install
 
+For another codebase, install the published package:
+
+```powershell
+python -m pip install "masguardeval==0.1.2"
+```
+
+For development from a repository checkout, use:
+
 ```powershell
 cd C:\path\to\Mas_Governance
 python -m pip install -e backend
 ```
+
+The package contains the SDK and CLI. The fictional datasets and example
+factories shown below live in the Git repository and are not bundled in the
+wheel.
+
+## Run Your Agent from the CLI
+
+From the repository root, try the trusted fictional factory:
+
+```powershell
+masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out reports/my-agent.json --sqlite reports/runs.sqlite3
+```
+
+Your `path.py:create_engine` function receives the loaded `GoldenDataset` and
+returns an `EvaluationEngine` configured with your adapter and registered tool
+handlers. The command runs one scenario **guarded only** and writes the trace,
+metric applicability and scores, observed graph, and recommendations. It does
+not discover agent tools automatically. The factory is executable Python, so
+only load code you trust. See the [CLI contract](SDK_PUBLIC_API.md) and
+[fictional factory](../examples/cli_agent_factory.py) for the exact pattern.
 
 ## Evaluate One Scenario
 
@@ -130,11 +158,17 @@ class MyAgentAdapter:
         ]
 
 
-dataset = GoldenDataset.load("datasets/golden_scenarios.json")
+dataset = GoldenDataset.load("my_scenarios.json")  # Declare my_tool in the scenario's allowed_tools.
 engine = EvaluationEngine(dataset=dataset, adapter=MyAgentAdapter())
 engine.register_tool("my_tool", lambda parameters, workspace: "tool result")
-result = engine.evaluate("auth_001")
+scenario = dataset.get("my_scenario_id")
+trace = engine.run_guarded(scenario)
+metrics = engine.compute_metrics(scenario, trace)
 ```
+
+`run_guarded()` is the safe default for a real handler. Use `evaluate()` only
+when both its guarded and unguarded baseline runs execute against isolated test
+tools.
 
 ## Add a Custom Guard
 
