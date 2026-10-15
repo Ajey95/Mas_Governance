@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -84,11 +85,33 @@ def main() -> None:
     if not os.environ.get("LANGSMITH_API_KEY"):
         report["services"]["langsmith"] = {"status": "blocked_missing_api_key"}
     else:
+        run_id = None
+        stage = "export"
         try:
             run_id = LangSmithExporter(args.langsmith_project).export(scenario, trace)
-            report["services"]["langsmith"] = {"status": "verified", "run_id": run_id}
+            from langsmith import Client
+            from langsmith.utils import LangSmithNotFoundError
+
+            stage = "readback"
+            client = Client()
+            for attempt in range(5):
+                try:
+                    remote = client.read_run(run_id, load_child_runs=True)
+                    if len(remote.child_runs or []) == len(trace.spans):
+                        break
+                except LangSmithNotFoundError:
+                    pass
+                if attempt == 4:
+                    raise RuntimeError("LangSmith root or child spans were not readable")
+                time.sleep(2)
+            if str(remote.id) != run_id or remote.name != f"MASGuardEval {scenario.scenario_id} {trace.mode}":
+                raise RuntimeError("LangSmith run readback differed")
+            report["services"]["langsmith"] = {"status": "verified", "run_id": run_id,
+                                                 "readback": True, "child_spans": len(remote.child_runs or []),
+                                                 "project": args.langsmith_project}
         except Exception as exc:
-            report["services"]["langsmith"] = {"status": "failed", "error_type": type(exc).__name__}
+            report["services"]["langsmith"] = {"status": "failed", "error_type": type(exc).__name__,
+                                                 "stage": stage, "run_id": run_id}
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
