@@ -1,0 +1,60 @@
+name: Official site image
+
+'on':
+  push:
+    paths:
+      - '.dockerignore'
+      - 'Dockerfile'
+      - '.github/workflows/official-site-image.yml'
+      - 'backend/**'
+      - 'docs/**'
+      - 'website/**'
+  pull_request:
+    paths:
+      - '.dockerignore'
+      - 'Dockerfile'
+      - '.github/workflows/official-site-image.yml'
+      - 'backend/**'
+      - 'docs/**'
+      - 'website/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: docker build --tag masguardeval-official-site .
+      - run: docker run --detach --name masguardeval-official-site --publish 127.0.0.1:10000:10000 masguardeval-official-site
+      - name: Verify guide routes and API isolation
+        run: |
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = 'http://127.0.0.1:10000'
+          for attempt in range(20):
+              try:
+                  with urllib.request.urlopen(base + '/health', timeout=3) as response:
+                      assert response.status == 200
+                  break
+              except (OSError, AssertionError):
+                  if attempt == 19:
+                      raise
+                  time.sleep(1)
+          for path in ('/', '/docs/', '/docs/quickstart/', '/docs/sdk/', '/docs/metrics/'):
+              with urllib.request.urlopen(base + path, timeout=5) as response:
+                  assert response.status == 200, path
+          for path in ('/openapi.json', '/dashboard', '/runs'):
+              try:
+                  urllib.request.urlopen(base + path, timeout=5)
+              except urllib.error.HTTPError as error:
+                  assert error.code == 404, path
+              else:
+                  raise AssertionError(f'{path} unexpectedly exposed')
+          PY
+      - if: failure()
+        run: docker logs masguardeval-official-site
