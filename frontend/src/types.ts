@@ -72,7 +72,7 @@ export interface EvaluationResult {
   guarded_graph: AgentToolGraph;
 }
 
-export interface GraphNode { id: string; label: string; kind: "agent" | "tool"; policy?: string; is_root_failure?: boolean }
+export interface GraphNode { id: string; label: string; kind: "agent" | "tool" | "graph_node"; namespace?: string; policy?: string; is_root_failure?: boolean }
 export interface GraphEdge { id: string; source: string; target: string; kind: string; span_id: string; decision: string | null; failure_label: string | null; is_root_failure: boolean; is_propagated_failure: boolean }
 export interface AgentToolGraph {
   trace_id: string;

@@ -135,19 +135,21 @@ def run_langgraph_graph(
                     completed.setdefault((namespace, step), []).append(name)
             elif kind == "checkpoint":
                 checkpoint_config = (payload.get("config") or {}).get("configurable") or {}
-                checkpoint_id = checkpoint_config.get("checkpoint_id") or checkpoint_id
-                next_nodes = tuple(payload.get("next") or ())
+                current_checkpoint_id = checkpoint_config.get("checkpoint_id")
+                if namespace == ():
+                    checkpoint_id = current_checkpoint_id or checkpoint_id
+                    next_nodes = tuple(payload.get("next") or ())
                 writes = (payload.get("metadata") or {}).get("writes")
                 sources = tuple(writes) if isinstance(writes, dict) else ("__start__",) if step == 0 else ()
-                targets = next_nodes or ("__end__",)
+                targets = tuple(payload.get("next") or ()) or ("__end__",)
                 for source in sources:
                     for target in targets:
                         if source != "__start__" or target != "__start__":
                             route(namespace, step + 1, str(source), str(target), unambiguous=len(sources) == 1)
                 session.observe_graph(
                     "graph_checkpoint", "checkpoint",
-                    metadata=meta(namespace, checkpoint_id=checkpoint_id, step=step,
-                                  next_nodes=list(next_nodes),
+                    metadata=meta(namespace, checkpoint_id=current_checkpoint_id, step=step,
+                                  next_nodes=list(payload.get("next") or ()),
                                   state_keys=sorted(payload.get("values") or {})),
                 )
             if session.trace is not None and session.trace.blocked:
