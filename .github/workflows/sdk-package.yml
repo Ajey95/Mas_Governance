@@ -33,6 +33,7 @@ jobs:
       - run: python -m pip check
       - run: masguardeval --version
       - run: masguardeval validate --dataset examples/fictional_scenarios.json
+      - run: masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out reports/ci-agent.json
       - run: python examples/custom_agent.py
       - run: python -m pytest backend/tests/test_cli_sdk.py -q
 
