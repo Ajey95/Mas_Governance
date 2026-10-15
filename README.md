@@ -2,7 +2,7 @@
 
 MASGuardEval is a research **reference implementation** for tracing and testing guard decisions in a software workspace assistant. Seven reference scenarios cover unauthorized access, disclosure, unsafe tools, loops, propagation, polluted context, and conflicting agents. A separate set of 35 synthetic candidate tasks supports pilot experiments.
 
-The default adapter supplies scripted agent intents. A model-driven adapter has completed a local Ollama pilot; external provider and independently adjudicated trials remain outstanding. Reached tools execute in a fresh, in-memory mock workspace; no real email account, file system, or shell command is used. The included results are **not evidence that a real multi-agent LLM is safe**. See [Research status](docs/RESEARCH_STATUS.md) before using results in a paper.
+The default adapter supplies scripted agent intents. A model-driven adapter has completed a local Ollama pilot and a small external OpenAI service smoke; independently adjudicated trials remain outstanding. Reached tools execute in a fresh, in-memory mock workspace; no real email account, file system, or shell command is used. The included results are **not evidence that a real multi-agent LLM is safe**. See [Research status](docs/RESEARCH_STATUS.md) before using results in a paper.
 
 ## Current implementation
 
@@ -16,9 +16,9 @@ The default adapter supplies scripted agent intents. A model-driven adapter has 
 | RBAC, ABAC, high-risk approval | Implemented and tested in mock execution |
 | API, SQLite spans, SSE stream, JSON/Markdown reports, responsive dashboard | Implemented; dashboard includes a live event log and per-trace findings report |
 | Model-driven single-agent and three-agent adapters | Implemented with mocked-client tests and one local Ollama reference pilot; no paper-grade trial |
-| Study review and analysis | Task freeze gate, two-reviewer outcome packets, adjudication, a secondary three-provider model council, held-out metric checks, and matched internal guard profiles implemented; independent human data pending |
-| LangChain, LangGraph, AutoGen, CrewAI | Native guarded tool wrappers implemented and exercised against installed framework packages |
-| PostgreSQL, pgvector, LangSmith | Private-schema JSONB trace store, scenario vector index, and explicit trace exporter implemented; live service verification pending |
+| Study review and analysis | Task freeze gate, two-reviewer outcome packets, adjudication, a secondary three-provider model council, held-out metric checks, and matched internal guard profiles implemented; one three-provider council service smoke passed; independent human data pending |
+| LangChain, LangGraph, AutoGen, CrewAI | Native guarded tool wrappers implemented and exercised against installed framework packages; LangGraph executed graph routes and PostgreSQL checkpoint pause/resume on Render |
+| PostgreSQL, pgvector, LangSmith | Supabase PostgreSQL, pgvector, owner-scoped traces, and deployed checkpoint routes verified; explicit LangSmith exporter implemented but no live export trial without a credential |
 | Independent labels, held-out validity study | Not supplied by this repository |
 
 ## Run locally (PowerShell)
@@ -43,9 +43,9 @@ npm run build
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. API reference is at `http://127.0.0.1:8000/docs`. The dashboard shows scenario comparisons, an interaction timeline, the observed agent–tool graph, a live event log, saved runs, downloadable trace findings, and authenticated approval requests when configured. Run endpoints are currently unauthenticated, so deploy the API only behind a private network until user authentication and tenant isolation are added.
+Open `http://127.0.0.1:5173`. API reference is at `http://127.0.0.1:8000/docs`. The dashboard shows scenario comparisons, an interaction timeline, the observed agent–tool graph, a live event log, saved runs, downloadable trace findings, and authenticated approval requests when configured. The direct local `masguardeval.api:app` entry point is for localhost development and has no user-auth middleware; deploy the `masguardeval.web:app` entry point with the authentication flags described in the deployment guide.
 
-The selected hosted path uses [Render and Supabase](docs/DEPLOY_RENDER_SUPABASE.md). Its Render entry point adds a shared private-preview login gate; separate user accounts and trace isolation are still required before public multi-user use.
+The [hosted Render and Supabase path](docs/DEPLOY_RENDER_SUPABASE.md) is live as a private research preview. It uses a shared preview gate followed by individual Supabase Auth accounts. Deployed two-account tests verified owner-scoped runs, graphs, findings, SSE logs, and LangGraph traces. General email onboarding and public-service hardening remain separate operational work.
 
 ## Results and definitions
 
@@ -64,4 +64,4 @@ Metric formulas, denominator rules, and limitations are in [Metrics](docs/METRIC
 
 The four user-supplied planning documents describe a larger empirical paper. This repository contains the software framework and pilot task set, but publication claims require independently gathered agent trials, held-out and adjudicated tasks, provenance for annotations, human review, metric validation, and comparisons to appropriate baselines. Those cannot be inferred from scripted cases or template-derived candidates. The detailed handoff is in [Research status](docs/RESEARCH_STATUS.md).
 
-A [working manuscript](paper/MASGuardEval_draft.md) records the verified method and feasibility pilot with explicit placeholders for the independent study. It is not submission ready.
+A [conference-format working manuscript](paper/MASGuardEval_SAIS27.tex) records the verified method and feasibility pilot with explicit placeholders for the independent study. An eight-page XeTeX PDF was built and visually checked; the manuscript is not submission ready without the independent study.
