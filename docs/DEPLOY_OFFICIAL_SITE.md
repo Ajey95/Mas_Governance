@@ -1,10 +1,10 @@
 # Official site and local workbench
 
 The public Render service at `https://masguardeval.onrender.com` serves only
-the MASGuardEval landing page, documentation, tutorials, examples, and method
+the MASGuardEval landing page, a navigable set of maintained guides, tutorials, examples, and method
 overview. `masguardeval.official_site:app` has no evaluation, trace, login,
 approval, or LangGraph execution routes. `Dockerfile` copies only the Python
-package and `website/`; it does not ship the dashboard build, datasets,
+package, `website/`, and an explicit allowlist of public Markdown guides; it does not ship the dashboard build, datasets,
 reports, or Supabase credentials.
 
 Run the evaluation workbench locally:
@@ -35,7 +35,10 @@ workbench or public site.
 ## Deployment checks
 
 After a public-site deployment, `GET /health` must identify
-`official_site`; `/`, `/docs/`, `/tutorials/`, `/examples/`, and `/method/`
-must return 200. `/dashboard`, `/runs`, `/scenarios`, `/user-login`, and
+`official_site`; `/`, `/docs/`, `/docs/quickstart/`, `/tutorials/`,
+`/examples/`, and `/method/` must return 200. `/dashboard`, `/runs`,
+`/scenarios`, `/user-login`, and
 `/openapi.json` must return 404. The local workbench has the opposite role:
-it serves `/dashboard`, `/runs`, and the trace routes on `127.0.0.1`.
+it serves `/dashboard`, `/runs`, and the trace routes on `127.0.0.1`, plus
+Swagger at `/docs` and its schema at `/openapi.json`. The old local
+`/project-docs` viewer has been removed; the dashboard links only to Swagger.

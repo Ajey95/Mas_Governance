@@ -10,7 +10,7 @@ AutoGen, and CrewAI are in the [examples](../examples/README.md).
 For another codebase, install the published package:
 
 ```powershell
-python -m pip install "masguardeval==0.1.2"
+python -m pip install "masguardeval==0.1.3"
 ```
 
 For development from a repository checkout, use:

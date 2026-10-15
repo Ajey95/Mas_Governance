@@ -1,0 +1,24 @@
+.guide-layout{display:grid;grid-template-columns:235px minmax(0,1fr);gap:52px;align-items:start;min-height:70vh}
+.guide-sidebar{position:sticky;top:0;max-height:100vh;overflow:auto;padding:35px 0 55px;border-right:1px solid #a9b7b0}
+.guide-back{display:block;font:11px 'DM Mono',Consolas,monospace;color:#087369;margin:0 18px 22px 0}
+.guide-sidebar nav{display:grid;gap:2px;padding-right:18px}
+.guide-sidebar nav a{padding:9px 12px;font:11px/1.35 'DM Mono',Consolas,monospace;border-left:2px solid transparent;color:#4d5f5d}
+.guide-sidebar nav a:hover,.guide-sidebar nav a[aria-current]{color:#065e58;background:#e8f1eb;border-left-color:#087369}
+.guide-body{max-width:880px;min-width:0;padding:35px 0 80px;overflow-wrap:anywhere}
+.guide-meta{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #a9b7b0;padding-bottom:14px;color:#087369;font:10px 'DM Mono',Consolas,monospace;letter-spacing:.08em}
+.guide-meta a{text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.guide-body h1{font:clamp(42px,5vw,72px)/1.05 'Libre Caslon Display',Georgia,serif;letter-spacing:-.04em;margin:31px 0 22px}
+.guide-body h2{font:35px/1.16 'Libre Caslon Display',Georgia,serif;letter-spacing:-.02em;margin:43px 0 14px;padding-top:20px;border-top:1px solid #bdc7c0}
+.guide-body h3{font:24px/1.25 'Libre Caslon Display',Georgia,serif;margin:30px 0 11px}
+.guide-body p,.guide-body li{font-size:15px;line-height:1.7;color:#344b49}
+.guide-body ul,.guide-body ol{padding-left:23px}
+.guide-body a{color:#076d65;text-decoration:underline;text-underline-offset:3px}
+.guide-body a:hover{color:#034941}
+.guide-body code{font:13px 'DM Mono',Consolas,monospace;background:#e8f1eb;padding:2px 4px}
+.guide-body pre{max-width:100%;overflow:auto;background:#172e2e;color:#f1f5ed;padding:18px 21px;font:12px/1.6 'DM Mono',Consolas,monospace}
+.guide-body pre code{background:none;color:inherit;padding:0}
+.guide-body table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:23px 0}
+.guide-body th,.guide-body td{border:1px solid #a9b7b0;padding:9px 12px;text-align:left;vertical-align:top;font-size:13px;line-height:1.5;min-width:110px}
+.guide-body th{background:#e8f1eb;color:#214a47}
+.guide-body blockquote{margin:24px 0;padding:2px 20px;border-left:3px solid #087369;background:#eef4ef}
+@media(max-width:850px){.guide-layout{grid-template-columns:1fr;gap:0}.guide-sidebar{position:static;max-height:none;border-right:0;border-bottom:1px solid #a9b7b0;padding:20px 0}.guide-sidebar nav{display:flex;overflow:auto;gap:5px;padding-right:0}.guide-sidebar nav a{white-space:nowrap;border-left:0;border-bottom:2px solid transparent}.guide-sidebar nav a[aria-current]{border-left:0;border-bottom-color:#087369}.guide-body{padding:22px 0 60px}.guide-body h2{font-size:30px}}
