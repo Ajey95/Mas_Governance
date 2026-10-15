@@ -16,7 +16,7 @@ The Supabase CLI created [MASGuardEval](https://supabase.com/dashboard/project/n
 
 This machine cannot establish TCP connections to the Supabase pooler on ports 5432 or 6543. `supabase db push --linked --dry-run` failed with `ECONNREFUSED`, so the exact reviewed migration was applied through the connected Supabase SQL service. Hosted migration history records version `20261015085327`; the local CLI migration file uses the same version. Live SQL confirmed PostgreSQL 17.11, pgvector 0.8.2 in `extensions`, two private trace tables with RLS enabled, and no `anon` or `authenticated` read access. A pgvector cosine-distance query returned the expected value. These are database checks; the application-to-database route still needs a deployed service trial.
 
-The Supabase security advisor reports two informational `rls_enabled_no_policy` notices. This is intentional: the private schema has no client-facing policies. The performance advisor reports two unused indexes because the tables are empty.
+The Supabase security advisor reports two informational [`rls_enabled_no_policy`](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) notices. This is intentional: the private schema has no client-facing policies. The performance advisor reports two [`unused_index`](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index) notices because the tables are empty.
 
 ## Provisioning order
 
