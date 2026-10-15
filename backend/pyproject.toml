@@ -6,11 +6,20 @@ build-backend = "setuptools.build_meta"
 name = "masguardeval"
 version = "0.1.0"
 description = "Risk-aware evaluation and observability framework for multi-agent LLM systems."
+readme = "README.md"
 requires-python = ">=3.10"
+keywords = ["agent evaluation", "guardrails", "tracing", "multi-agent"]
 dependencies = [
   "fastapi==0.116.1",
   "uvicorn[standard]==0.35.0"
 ]
+
+[project.scripts]
+masguardeval = "masguardeval.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Ajey95/Mas_Governance"
+Documentation = "https://github.com/Ajey95/Mas_Governance/tree/main/docs"
 
 [project.optional-dependencies]
 live = ["openai>=1.68"]
@@ -31,6 +40,9 @@ all-integrations = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["masguardeval*"]
+
+[tool.setuptools.package-data]
+masguardeval = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

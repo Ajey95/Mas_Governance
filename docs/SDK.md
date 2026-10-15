@@ -1,6 +1,9 @@
 # Python SDK
 
 Use MASGuardEval as a Python framework inside tests, notebooks, CI jobs, or another agent system.
+The supported 0.1.x surface and installed command are in the [package contract](SDK_PUBLIC_API.md).
+Runnable fictional integrations for custom agents, LangChain, LangGraph,
+AutoGen, and CrewAI are in the [examples](../examples/README.md).
 
 ## Install
 

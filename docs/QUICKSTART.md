@@ -22,20 +22,17 @@ python -m pip install -e backend
 Verify:
 
 ```powershell
-python -c "from masguardeval import EvaluationEngine; print(EvaluationEngine)"
+masguardeval --version
+masguardeval validate --dataset examples/fictional_scenarios.json
 ```
 
 ## 2. Run One Evaluation
 
 ```powershell
-python -c "from masguardeval import EvaluationEngine; e=EvaluationEngine.from_dataset_path('datasets/golden_scenarios.json'); r=e.evaluate('auth_001'); print(r.scenario.scenario_id, r.guarded_trace.blocked, r.guarded_metrics['TSP'].applicable)"
+masguardeval evaluate --dataset datasets/golden_scenarios.json --scenario auth_001 --out reports/reference_auth_001.json
 ```
 
-Expected shape:
-
-```text
-auth_001 True False
-```
+The JSON contains baseline and guarded traces, graphs, and applicable metrics.
 
 ## 3. Start the API
 
@@ -75,14 +72,11 @@ http://127.0.0.1:5173
 
 ```powershell
 cd C:\path\to\Mas_Governance
-python scripts\run_evaluation.py
+masguardeval report --dataset datasets/golden_scenarios.json --json-out reports/reference_report.json --md-out reports/reference_report.md
 ```
 
-Output:
-
-```text
-reports/latest_evaluation.json
-```
+The CLI's report uses the scripted reference adapter. For the dashboard's
+`reports/latest_evaluation.json`, run `python scripts/run_evaluation.py`.
 
 ## 6. Run Tests
 
@@ -90,11 +84,7 @@ reports/latest_evaluation.json
 python -m pytest backend\tests
 ```
 
-Expected result:
-
-```text
-32 passed
-```
+The exact test count changes as the framework grows.
 
 ## Troubleshooting
 
@@ -123,4 +113,9 @@ $env:OPENAI_API_KEY = '<your key>'
 python scripts/run_live_experiment.py --model <pinned-model-id> --dataset datasets/candidate_scenarios.json --architectures single,multi --trials 3
 ```
 
-The CLI writes `reports/live_experiment.json` and stores each trace in `reports/runs.sqlite3`. Its analysis averages repeated runs within each scenario before computing scenario-level intervals and exploratory sign-flip tests. Independent task labels and a held-out evaluation are still needed for paper claims.
+The model-study script writes `reports/live_experiment.json` and stores each
+trace in `reports/runs.sqlite3`. It remains separate from the installed
+`masguardeval` reference CLI. Its analysis averages repeated runs within each
+scenario before computing scenario-level intervals and exploratory sign-flip
+tests. Independent task labels and a held-out evaluation are still needed for
+paper claims.

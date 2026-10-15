@@ -1,5 +1,12 @@
 """MASGuardEval framework package."""
 
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("masguardeval")
+except PackageNotFoundError:
+    __version__ = "0.1.0"
+
 from .dataset import GoldenDataset
 from .guards import (
     Guard,
@@ -29,12 +36,21 @@ from .frameworks import (
 )
 from .langgraph_runtime import LangGraphRun, private_postgres_checkpointer, run_langgraph_graph
 from .runner import EvaluationEngine
+from .models import EvaluationResult, ExecutionEvent, MetricResult, PolicyDecision, Scenario, Span, Trace
 from .evaluator import EvaluatorAgreement
 from .experiments import ExperimentSuite
 from .propagation import PropagationAnalyzer
 from .scaling import BatchEvaluationExecutor
 
 __all__ = [
+    "__version__",
+    "EvaluationResult",
+    "ExecutionEvent",
+    "MetricResult",
+    "PolicyDecision",
+    "Scenario",
+    "Span",
+    "Trace",
     "EvaluationEngine",
     "BatchEvaluationExecutor",
     "EvaluatorAgreement",

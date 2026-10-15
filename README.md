@@ -18,6 +18,7 @@ The default adapter supplies scripted agent intents. A model-driven adapter has 
 | Model-driven single-agent and three-agent adapters | Implemented with mocked-client tests and one local Ollama reference pilot; no paper-grade trial |
 | Study review and analysis | Task freeze gate, two-reviewer outcome packets, adjudication, a secondary three-provider model council, held-out metric checks, and matched internal guard profiles implemented; one three-provider council service smoke passed; independent human data pending |
 | LangChain, LangGraph, AutoGen, CrewAI | Native guarded tool wrappers implemented and exercised against installed framework packages; LangGraph executed graph routes and PostgreSQL checkpoint pause/resume on Render |
+| Installable SDK and CLI | Python wheel and source archive build; the installed `masguardeval` command and all five fictional integration examples passed in a fresh Python environment |
 | PostgreSQL, pgvector, LangSmith | Supabase PostgreSQL, pgvector, owner-scoped traces, and deployed checkpoint routes verified; explicit LangSmith exporter implemented but no live export trial without a credential |
 | Independent labels, held-out validity study | Not supplied by this repository |
 
@@ -44,6 +45,11 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:5173`. API reference is at `http://127.0.0.1:8000/docs`. The dashboard shows scenario comparisons, an interaction timeline, the observed agent–tool graph, a live event log, saved runs, downloadable trace findings, and authenticated approval requests when configured. The direct local `masguardeval.api:app` entry point is for localhost development and has no user-auth middleware; deploy the `masguardeval.web:app` entry point with the authentication flags described in the deployment guide.
+
+For another codebase, install `./backend` as a Python package and use the
+[`masguardeval` command and SDK contract](docs/SDK_PUBLIC_API.md). The
+[runnable examples](examples/README.md) use fictional handlers and need no
+external credentials.
 
 The [hosted Render and Supabase path](docs/DEPLOY_RENDER_SUPABASE.md) is live as a private research preview. It uses a shared preview gate followed by individual Supabase Auth accounts. Deployed two-account tests verified owner-scoped runs, graphs, findings, SSE logs, and LangGraph traces. General email onboarding and public-service hardening remain separate operational work.
 

@@ -6,6 +6,8 @@ MASGuardEval is a reference implementation for testing guard behavior in a mock 
 | --- | --- |
 | Install and run | [Quickstart](QUICKSTART.md) |
 | Integrate a custom adapter and tool handlers | [Python SDK](SDK.md) |
+| Install the library and use its command | [Package and CLI contract](SDK_PUBLIC_API.md) |
+| Run external-codebase examples | [Runnable integrations](../examples/README.md) |
 | Use LangChain, LangGraph, AutoGen, CrewAI, PostgreSQL, pgvector, or LangSmith | [Integrations](INTEGRATIONS.md) |
 | Use HTTP endpoints | [API](API.md) |
 | Understand formulas and caveats | [Metrics](METRICS.md) |
