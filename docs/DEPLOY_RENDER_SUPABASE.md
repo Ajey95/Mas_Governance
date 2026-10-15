@@ -20,9 +20,10 @@ The Supabase security advisor reports six informational [`rls_enabled_no_policy`
 
 ## Live deployment verification, 2026-10-15
 
-- Render service `srv-db8bjbcs728c738simig` deployed commit `3a8e80d` on the Free plan. `/health` returned 200; unauthenticated `/runs` returned 401; the private preview login returned 204; the authenticated dashboard returned 200.
+- Render service `srv-db8bjbcs728c738simig` deployed commit `1ba2e61` on the Free plan. `/health` returned 200; unauthenticated `/runs` returned 401; the private preview login returned 204; the authenticated dashboard returned 200.
 - An authenticated guarded SSE run of `auth_001` saved trace `2b0c984d-68a5-4313-9ad5-b7bf653eb141` with 14 spans. Its saved trace, graph, and findings routes returned successfully. The same trace remained readable after the next Render revision, confirming storage outside the instance.
 - `POST /langgraph/reference-run` ran a fictional, bounded LangGraph tool workflow on Render. It saved trace `f7ad9704-e535-4d30-9997-9d780588cf5a` with 22 spans, seven graph/agent/tool nodes, four observed graph edges, and checkpoint `1f1c88d3-e0a6-6e17-8002-4d3417d59f0a`. Both the trace and graph were read back through authenticated API routes.
+- `POST /langgraph/checkpoint-probe` paused thread `checkpoint-probe-9fa971e4-3bd1-4f99-9a34-03172ba7e628`, closed its checkpointer connection, reopened a new one, and resumed with fixed fictional data. The paused trace `5bc8b1b6-93e4-4963-abf6-5368775e22d9` and resumed trace `fe9568b1-6e1d-4c21-bc5b-f8b29d0fb892` were both retrieved through authenticated routes. Supabase SQL found three persisted checkpoint steps for that thread.
 - Supabase SQL found four checkpoint rows and the matching reference trace. All six tables in the private `masguardeval` schema have RLS enabled and grant neither `anon` nor `authenticated` role SELECT. LangGraph's checkpoint tables are package-managed by `PostgresSaver.setup()` on first use; the source migration prepares the private schema and trace tables.
 
 This verifies a reference workflow and operational storage path. It does not establish real LLM study outcomes, multi-tenant authentication, or paper-grade metric validity.
