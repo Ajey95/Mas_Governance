@@ -2,6 +2,8 @@
 
 MASGuardEval is built around one loop:
 
+The default adapter emits scripted intentions. Optional model-driven single-agent and Planner–Executor–Reviewer adapters use the same runner, but no external model run is bundled. Tool side effects must be routed through the runner for guards to intercept them.
+
 ```text
 scenario -> baseline run -> guarded run -> traces -> metrics -> comparison -> report/dashboard
 ```
@@ -11,7 +13,7 @@ scenario -> baseline run -> guarded run -> traces -> metrics -> comparison -> re
 ```mermaid
 flowchart LR
     A[Golden Dataset<br/>risk scenarios] --> B[Evaluation Engine]
-    X[External Agent Systems<br/>LangGraph / AutoGen / CrewAI / Custom Python] --> C[AgentSystemAdapter]
+    X[External Agent Systems<br/>LangChain / LangGraph / AutoGen / CrewAI / Custom Python] --> C[Native tools or AgentSystemAdapter]
     C --> B
 
     B --> D[Baseline Runner<br/>no protections]
@@ -61,6 +63,13 @@ sequenceDiagram
 | Evaluator agreement | `backend/masguardeval/evaluator.py` | Compute Cohen's Kappa and confusion tables for label validation. |
 | Experiment suite | `backend/masguardeval/experiments.py` | Produce scenario tables, metric summaries, and guard ablations. |
 | Propagation analyzer | `backend/masguardeval/propagation.py` | Build rooted failure-propagation paths from trace spans. |
+| Agent–tool graph | `backend/masguardeval/graph.py` | Build observed agent/tool nodes and typed message, call, block, and approval edges with span references. |
+| Trace store | `backend/masguardeval/store.py` | Persist runs and spans in SQLite or PostgreSQL JSONB, including interrupted runs. |
+| Native framework tools | `backend/masguardeval/frameworks.py` | Route LangChain, LangGraph, AutoGen, and CrewAI tool calls through one guarded evaluation session. |
+| LangSmith exporter | `backend/masguardeval/langsmith_export.py` | Upload a completed trace as a run tree on explicit invocation. |
+| Vector index | `backend/masguardeval/vector_index.py` | Search supplied scenario embeddings with pgvector. |
+| Approval broker | `backend/masguardeval/approvals.py` | Pause a high-risk request for an authenticated approve/deny decision or timeout; record request ID and reason in the trace. |
+| Live adapters | `backend/masguardeval/live.py` | Model-driven single- and multi-agent planning with tool feedback. |
 | Batch executor | `backend/masguardeval/scaling.py` | Shard and run scenario batches with worker-aware execution. |
 | Runner | `backend/masguardeval/runner.py` | Execute baseline and guarded evaluations. |
 | API | `backend/masguardeval/api.py` | Expose evaluation results over HTTP. |
@@ -105,12 +114,15 @@ Possible decisions:
 | `ALLOW` | Continue execution. |
 | `BLOCK` | Stop the event. |
 | `MODIFY` | Replace event content with a safer version. |
-| `REQUIRE_APPROVAL` | Stop and require a human approval gate. |
+| `REQUIRE_APPROVAL` | Pause a streamed run for an authenticated approve/deny decision; deny or timeout stops the run. |
 | `LOG_ONLY` | Record but do not block. |
 
 Built-in guards:
 
+- `FailureIsolationGuard`
+- `CoordinationGuard`
 - `RBACGuard`
+- `ABACGuard`
 - `ToolAllowlistGuard`
 - `ParameterValidator`
 - `ContextSanitizer`
@@ -121,7 +133,8 @@ Built-in guards:
 
 | Need | Extension point |
 | --- | --- |
-| Use LangGraph, AutoGen, CrewAI, or another framework | Implement `AgentSystemAdapter.plan()`. |
+| Use LangChain, LangGraph, AutoGen, or CrewAI | Use the native wrappers in `frameworks.py` and a `FrameworkSession`. |
+| Use another framework | Implement `AgentSystemAdapter.plan()` or call `FrameworkSession` from tool hooks. |
 | Add organization-specific policy | Implement a custom guard. |
 | Add domain-specific scenarios | Add a golden dataset JSON file. |
 | Add metrics | Extend `MetricEngine.compute()`. |
@@ -129,7 +142,7 @@ Built-in guards:
 
 ## Scaling Notes
 
-The current prototype uses JSON datasets and in-process execution, but it includes a batch executor for larger scenario suites.
+The default prototype uses JSON datasets, local SQLite trace storage, and in-process execution, with a batch executor for larger scenario suites. PostgreSQL and pgvector are optional adapters that require external infrastructure.
 
 Implemented scaling surface:
 
@@ -140,8 +153,8 @@ Implemented scaling surface:
 
 For larger deployments:
 
-- Store datasets and traces in PostgreSQL.
-- Store embeddings or semantic annotations in pgvector.
+- Use the implemented PostgreSQL store for trace persistence when a server is available.
+- Use the pgvector index for supplied scenario embeddings when the extension is enabled.
 - Run scenario batches asynchronously using the shard manifest.
 - Export OpenAPI and dashboard payloads as stable integration contracts.
 - Keep guard and adapter interfaces stable for external users.

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: masguardeval
+    runtime: docker
+    region: singapore
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: MASGUARDEVAL_REQUIRE_DATABASE_URL
+        value: "1"
+      - key: MASGUARDEVAL_REQUIRE_SITE_AUTH
+        value: "1"
+      - key: MASGUARDEVAL_DATABASE_URL
+        sync: false
+      - key: MASGUARDEVAL_SITE_TOKEN
+        sync: false

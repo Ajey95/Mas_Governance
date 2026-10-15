@@ -1,99 +1,35 @@
-# Experiments
+# Reproduce the reference experiments
 
-Use this guide when you need reproducible research artifacts beyond the live dashboard.
-
-## Broad Scenario Run
-
-Run all golden scenarios and generate scenario-level, metric-level, and ablation tables:
+From the repository root, install the backend and set its module path:
 
 ```powershell
-$env:PYTHONPATH="backend"
-py -3.11 scripts\run_experiments.py
+python -m pip install -e backend
+$env:PYTHONPATH = "backend"
+python scripts/run_experiments.py
+python scripts/run_evaluation.py
+python scripts/run_propagation_analysis.py --scenario-id cascade_001
+python scripts/run_scalability_batch.py --max-workers 2 --chunk-size 3
+python scripts/run_evaluator_validation.py
 ```
 
-Outputs:
+These commands write files under `reports/`. They run scripted intents in a fresh mock workspace, not live LLM agents. The experiment report contains per-scenario RSS where applicable, aggregate metrics with sample counts, and guard ablations: no guards, RBAC only, full stack, and one-guard-removed variants. A blocked run stops before later scripted steps. Ablation figures are descriptive for these seven scenarios.
 
-```text
-reports/experiment_report.json
-reports/experiment_report.md
-```
+`run_evaluator_validation.py` demonstrates Cohen's kappa using `datasets/evaluator_annotations.json`. Those nine label pairs are **synthetic example labels**. The output includes `provenance` and must not be presented as human-versus-LLM agreement.
 
-The Markdown report includes:
+`run_propagation_analysis.py` follows explicit parent-span links. The graph does not infer causality from mere event order. `run_scalability_batch.py` checks chunked local execution and shard manifests; it is not a performance benchmark for remote agents.
 
-- Scenario results with baseline RSS, guarded RSS, and RSS delta.
-- Aggregate metric table across all scenarios.
-- Guard ablation table for `no_guards`, `rbac_only`, and `full_guard_stack`.
+API equivalents: `GET /experiments`, `GET /dashboard`, `GET /propagation/{scenario_id}`, `GET /scalability/batch`, and `POST /evaluator/agreement`.
 
-## Guard Ablation
+See [metric definitions](METRICS.md) and [research status](RESEARCH_STATUS.md) before using these outputs in a paper.
 
-The ablation runner compares guard stacks under the same dataset and deterministic adapter:
+## Extended candidate and live study path
 
-| Stack | Meaning |
-| --- | --- |
-| `no_guards` | Guarded path with guard middleware disabled. |
-| `rbac_only` | Only role-boundary protection enabled. |
-| `full_guard_stack` | RBAC, tool allowlist, parameter validation, context sanitizer, loop detector, and approval gate. |
+`python scripts/generate_candidate_dataset.py` writes 35 synthetic candidate tasks spanning the seven risk categories. Each has a concrete scripted event fixture so prompt and tool parameters can vary. These tasks are pilot material, not independently adjudicated ground truth.
 
-This makes mitigation contribution measurable instead of only visually comparing one guarded run.
+`python scripts/run_live_experiment.py --model <pinned-model-id> --dataset datasets/candidate_scenarios.json --architectures single,multi --trials 3` runs baseline and guarded executions for each selected task using model-driven single- and multi-agent adapters. The runner executes only isolated mock workspace tools. It records model token usage, model call latency, guard spans, tool feedback, agent messages, and the observed graph. Install `backend[live]` and supply `OPENAI_API_KEY` for an external OpenAI run. For a local run, select `--provider ollama`; the CLI records the installed model digest, bounds each response, checkpoints each paired trial, and supports `--resume` for matching partial reports.
 
-## Evaluator Validation
+One local `gemma4:latest` pilot on the seven reference tasks recorded 14 pairs (single and multi architecture, one trial each). A trace audit found one pair with adapter protocol errors in both modes, leaving 13 protocol-valid pairs. The raw and audited pilot reports are kept as ignored local files in `reports/ollama_*.json` because they may contain prompts and model outputs. The full guard profile stopped six guarded runs across all recorded pairs, while the matched internal allowlist profile stopped five. These are intervention counts on reference fixtures, not independently judged task outcomes. `scripts/compare_guard_profiles.py` produces a descriptive matched table, excludes protocol-invalid pairs from metric-score differences, and refuses mismatched configurations. `scripts/audit_live_report.py` preserves raw reports while producing the audited copies.
 
-Compute Cohen's Kappa between human expert labels and LLM-judge labels:
+Use [the study protocol](PAPER_STUDY_PROTOCOL.md) to prepare independent task reviews, freeze task-family splits, collect two outcome judgments per trace, and run held-out metric checks. A local model run cannot substitute for those steps.
 
-```powershell
-$env:PYTHONPATH="backend"
-py -3.11 scripts\run_evaluator_validation.py
-```
-
-Outputs:
-
-```text
-reports/evaluator_agreement.json
-```
-
-The implementation lives in `backend/masguardeval/evaluator.py` and returns observed agreement, expected agreement, Cohen's Kappa, and a confusion table.
-
-## Failure Propagation
-
-Analyze rooted failure paths for a trace:
-
-```powershell
-$env:PYTHONPATH="backend"
-py -3.11 scripts\run_propagation_analysis.py --scenario-id cascade_001
-```
-
-Outputs:
-
-```text
-reports/propagation_analysis.json
-```
-
-The implementation builds a directed graph from span parent IDs and propagation metadata, then reports root spans, propagated spans, edges, paths, longest path length, and impact score.
-
-## Batch / Scalability Run
-
-Run all scenarios through a chunked executor:
-
-```powershell
-$env:PYTHONPATH="backend"
-py -3.11 scripts\run_scalability_batch.py --max-workers 2 --chunk-size 3
-```
-
-Outputs:
-
-```text
-reports/scalability_batch.json
-```
-
-The batch executor is intentionally backend-agnostic: local threads are the default runner, while the shard manifest can be handed to queue workers or remote executors later.
-
-## API Endpoints
-
-When the backend is running:
-
-```text
-GET  /experiments
-GET  /propagation/{scenario_id}
-GET  /scalability/batch?max_workers=2&chunk_size=3
-POST /evaluator/agreement
-```
+The live manifest includes paired per-task results and scenario-clustered exploratory summaries. Each task's repeated-run mean is one analysis unit. The report gives mean guarded improvement, a percentile bootstrap interval across tasks, and an unadjusted two-sided sign-flip p-value. These exploratory statistics do not establish construct validity, solve multiple testing, or substitute for held-out tasks and independent expert labels.

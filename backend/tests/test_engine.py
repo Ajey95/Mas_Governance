@@ -30,7 +30,7 @@ def test_guarded_run_improves_unauthorized_compliance():
 
     assert result.baseline_metrics["TSP"].passed is False
     assert result.baseline_metrics["RSS"].passed is False
-    assert result.guarded_metrics["TSP"].passed is True
+    assert result.guarded_metrics["TSP"].applicable is False
     assert result.guarded_metrics["RSS"].passed is True
     assert result.guarded_trace.blocked is True
 

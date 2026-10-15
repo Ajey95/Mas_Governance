@@ -12,15 +12,15 @@
         "groups": [
           {
             "group": "Start here",
-            "pages": ["README", "QUICKSTART"]
+            "pages": ["README", "QUICKSTART", "RESEARCH_STATUS", "STUDY_AUTHORING_GUIDE", "PAPER_STUDY_PROTOCOL"]
           },
           {
             "group": "Build",
-            "pages": ["SDK", "EXAMPLES"]
+            "pages": ["SDK", "INTEGRATIONS", "EXAMPLES"]
           },
           {
             "group": "Concepts",
-            "pages": ["ARCHITECTURE", "METRICS", "EXPERIMENTS"]
+            "pages": ["ARCHITECTURE", "METRICS", "EXPERIMENTS", "RELATED_WORK_AUDIT"]
           }
         ]
       },

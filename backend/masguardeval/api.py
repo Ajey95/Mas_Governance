@@ -1,28 +1,44 @@
 from __future__ import annotations
 
 import re
+import json
+import os
+import threading
+import hmac
 from pathlib import Path
 from html import escape
+from queue import Queue
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .evaluator import EvaluatorAgreement
+from .dataset import GoldenDataset
 from .experiments import ExperimentSuite
 from .propagation import PropagationAnalyzer
 from .runner import EvaluationEngine
 from .scaling import BatchEvaluationExecutor
+from .store import PostgresTraceStore, TraceStore
+from .approvals import ApprovalBroker
+from .graph import AgentToolGraphBuilder
+from .findings import analyze_trace
+from .models import Scenario, Trace
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DATASET_PATH = ROOT / "datasets" / "golden_scenarios.json"
+DATASET_PATH = Path(os.environ.get("MASGUARDEVAL_DATASET_PATH", str(ROOT / "datasets" / "golden_scenarios.json")))
 DOCS_PATH = ROOT / "docs"
 DOC_FILES = {
     "README.md": "Docs Home",
+    "RESEARCH_STATUS.md": "Research Status",
+    "PAPER_STUDY_PROTOCOL.md": "Paper Study Protocol",
+    "STUDY_AUTHORING_GUIDE.md": "Study Authoring Guide",
+    "RELATED_WORK_AUDIT.md": "Related Work Audit",
     "QUICKSTART.md": "Quickstart",
     "SDK.md": "SDK",
+    "INTEGRATIONS.md": "Integrations",
     "API.md": "API Guide",
     "EXAMPLES.md": "Examples",
     "EXPERIMENTS.md": "Experiments",
@@ -32,17 +48,37 @@ DOC_FILES = {
     "openapi.json": "OpenAPI Schema",
 }
 
-engine = EvaluationEngine.from_dataset_path(DATASET_PATH)
+trace_store = (
+    PostgresTraceStore(os.environ["MASGUARDEVAL_DATABASE_URL"])
+    if os.environ.get("MASGUARDEVAL_DATABASE_URL")
+    else TraceStore(os.environ.get("MASGUARDEVAL_TRACE_DB", str(ROOT / "reports" / "runs.sqlite3")))
+)
+engine = EvaluationEngine(GoldenDataset.load(DATASET_PATH), trace_store=trace_store)
+preview_engine = EvaluationEngine(engine.dataset)
+approval_broker = ApprovalBroker()
 
 
 class AgreementRequest(BaseModel):
     labels_a: list[str] = Field(min_length=1)
     labels_b: list[str] = Field(min_length=1)
 
+
+class ApprovalDecisionRequest(BaseModel):
+    approve: bool
+    reason: str = Field(min_length=1, max_length=500)
+
+
+def require_approval_auth(authorization: str | None) -> None:
+    token = os.environ.get("MASGUARDEVAL_APPROVAL_TOKEN")
+    if not token:
+        raise HTTPException(status_code=503, detail="Approval API requires MASGUARDEVAL_APPROVAL_TOKEN")
+    if not authorization or not hmac.compare_digest(authorization, f"Bearer {token}"):
+        raise HTTPException(status_code=401, detail="Invalid approval authorization")
+
 app = FastAPI(
     title="MASGuardEval API",
     version="0.1.0",
-    description="Golden-dataset-based evaluation and observability framework for multi-agent LLM systems.",
+    description="Reference evaluation and observability framework. Built-in scenarios use scripted intents and an isolated mock workspace, not live LLM agents.",
 )
 
 app.add_middleware(
@@ -79,27 +115,127 @@ def evaluate(scenario_id: str) -> dict[str, object]:
 
 @app.get("/dashboard")
 def dashboard() -> dict[str, object]:
-    return engine.generate_dashboard()
+    return preview_engine.generate_dashboard()
+
+
+@app.get("/runs")
+def saved_runs(limit: int = 50) -> list[dict[str, object]]:
+    try:
+        return trace_store.list(limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/runs/{trace_id}")
+def saved_run(trace_id: str) -> dict[str, object]:
+    run = trace_store.get(trace_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Unknown trace ID")
+    return run
+
+
+@app.get("/runs/{trace_id}/graph")
+def saved_run_graph(trace_id: str) -> dict[str, object]:
+    run = trace_store.get(trace_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Unknown trace ID")
+    scenario = Scenario.from_dict(run["scenario"]) if run.get("scenario") else engine.dataset.get(run["scenario_id"])
+    return AgentToolGraphBuilder().build(scenario, Trace.from_dict(run))
+
+
+@app.get("/runs/{trace_id}/findings")
+def saved_run_findings(trace_id: str) -> dict[str, object]:
+    run = trace_store.get(trace_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Unknown trace ID")
+    scenario = Scenario.from_dict(run["scenario"]) if run.get("scenario") else engine.dataset.get(run["scenario_id"])
+    return analyze_trace(scenario, Trace.from_dict(run))
+
+
+@app.get("/stream/{scenario_id}")
+def stream_scenario(scenario_id: str, mode: str = "guarded") -> StreamingResponse:
+    if mode not in {"baseline", "guarded"}:
+        raise HTTPException(status_code=422, detail="mode must be baseline or guarded")
+    try:
+        scenario = engine.dataset.get(scenario_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    events: Queue[tuple[str, dict[str, object]]] = Queue()
+
+    def run() -> None:
+        try:
+            listener = lambda span: events.put(("span", span.to_dict()))
+            if mode == "guarded":
+                approval_handler = approval_broker.request if os.environ.get("MASGUARDEVAL_APPROVAL_TOKEN") else None
+                trace = engine.run_guarded(scenario, on_span=listener, approval_handler=approval_handler)
+            else:
+                trace = engine.run_baseline(scenario, on_span=listener)
+            events.put(("complete", {"trace": trace.to_dict(), "findings": analyze_trace(scenario, trace),
+                                     "metrics": {key: value.to_dict() for key, value in engine.compute_metrics(scenario, trace).items()}}))
+        except Exception as exc:
+            events.put(("error", {"detail": str(exc)}))
+
+    threading.Thread(target=run, daemon=True).start()
+
+    def emit():
+        while True:
+            kind, payload = events.get()
+            yield f"event: {kind}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            if kind in {"complete", "error"}:
+                break
+
+    return StreamingResponse(emit(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/approvals")
+def pending_approvals(authorization: str | None = Header(default=None)) -> list[dict[str, object]]:
+    require_approval_auth(authorization)
+    return approval_broker.list(status="pending")
+
+
+@app.post("/approvals/{request_id}")
+def decide_approval(
+    request_id: str, payload: ApprovalDecisionRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, object]:
+    require_approval_auth(authorization)
+    try:
+        return approval_broker.decide(request_id, payload.approve, payload.reason)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Unknown approval request") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get("/experiments")
 def experiments() -> dict[str, object]:
-    return ExperimentSuite(engine).run().to_dict()
+    return ExperimentSuite(preview_engine).run().to_dict()
 
 
 @app.get("/propagation/{scenario_id}")
 def propagation(scenario_id: str) -> dict[str, object]:
     try:
-        result = engine.evaluate(scenario_id)
+        result = preview_engine.evaluate(scenario_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return PropagationAnalyzer().analyze(result.baseline_trace).to_dict()
 
 
+@app.get("/graph/{scenario_id}")
+def agent_tool_graph(scenario_id: str, mode: str = "guarded") -> dict[str, object]:
+    if mode not in {"baseline", "guarded"}:
+        raise HTTPException(status_code=422, detail="mode must be baseline or guarded")
+    try:
+        result = preview_engine.evaluate(scenario_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return result.baseline_graph if mode == "baseline" else result.guarded_graph
+
+
 @app.get("/scalability/batch")
 def scalability_batch(max_workers: int = 4, chunk_size: int = 10) -> dict[str, object]:
     try:
-        return BatchEvaluationExecutor(engine, max_workers=max_workers, chunk_size=chunk_size).run().to_dict()
+        return BatchEvaluationExecutor(preview_engine, max_workers=max_workers, chunk_size=chunk_size).run().to_dict()
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

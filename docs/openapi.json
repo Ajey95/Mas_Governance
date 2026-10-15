@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "MASGuardEval API",
-    "description": "Golden-dataset-based evaluation and observability framework for multi-agent LLM systems.",
+    "description": "Reference evaluation and observability framework. Built-in scenarios use scripted intents and an isolated mock workspace, not live LLM agents.",
     "version": "0.1.0"
   },
   "paths": {
@@ -109,6 +109,298 @@
         }
       }
     },
+    "/runs": {
+      "get": {
+        "summary": "Saved Runs",
+        "operationId": "saved_runs_runs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Saved Runs Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runs/{trace_id}": {
+      "get": {
+        "summary": "Saved Run",
+        "operationId": "saved_run_runs__trace_id__get",
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Saved Run Runs  Trace Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runs/{trace_id}/graph": {
+      "get": {
+        "summary": "Saved Run Graph",
+        "operationId": "saved_run_graph_runs__trace_id__graph_get",
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Saved Run Graph Runs  Trace Id  Graph Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stream/{scenario_id}": {
+      "get": {
+        "summary": "Stream Scenario",
+        "operationId": "stream_scenario_stream__scenario_id__get",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "guarded",
+              "title": "Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approvals": {
+      "get": {
+        "summary": "Pending Approvals",
+        "operationId": "pending_approvals_approvals_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Pending Approvals Approvals Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/approvals/{request_id}": {
+      "post": {
+        "summary": "Decide Approval",
+        "operationId": "decide_approval_approvals__request_id__post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Decide Approval Approvals  Request Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/experiments": {
       "get": {
         "summary": "Experiments",
@@ -153,6 +445,57 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Propagation Propagation  Scenario Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/graph/{scenario_id}": {
+      "get": {
+        "summary": "Agent Tool Graph",
+        "operationId": "agent_tool_graph_graph__scenario_id__get",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "guarded",
+              "title": "Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Agent Tool Graph Graph  Scenario Id  Get"
                 }
               }
             }
@@ -347,6 +690,26 @@
           "labels_b"
         ],
         "title": "AgreementRequest"
+      },
+      "ApprovalDecisionRequest": {
+        "properties": {
+          "approve": {
+            "type": "boolean",
+            "title": "Approve"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "approve",
+          "reason"
+        ],
+        "title": "ApprovalDecisionRequest"
       },
       "HTTPValidationError": {
         "properties": {
