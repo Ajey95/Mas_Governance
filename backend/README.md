@@ -5,10 +5,12 @@ software workspace. The package provides a Python SDK and a `masguardeval`
 command. The default adapter is scripted; its outputs are reference examples,
 not empirical safety estimates.
 
-Install locally with `python -m pip install ./backend`. See the repository's
-`docs/SDK.md`, `docs/INTEGRATIONS.md`, and `examples/README.md` for the public
-API and runnable integrations. The command accepts caller-supplied scenario
-datasets; run `masguardeval --help` after installation.
+Install locally with `python -m pip install ./backend`. See the
+[SDK guide](https://github.com/Ajey95/Mas_Governance/blob/v0.1.0/docs/SDK.md),
+[integrations](https://github.com/Ajey95/Mas_Governance/blob/v0.1.0/docs/INTEGRATIONS.md),
+and [runnable examples](https://github.com/Ajey95/Mas_Governance/blob/v0.1.0/examples/README.md)
+for the public API and integrations. The command accepts caller-supplied
+scenario datasets; run `masguardeval --help` after installation.
 
 The Python package and code under `backend/` are licensed under the
 [MIT License](LICENSE). The paper, study datasets, reviewer records, and other

@@ -21,7 +21,7 @@ masguardeval = "masguardeval.cli:main"
 
 [project.urls]
 Repository = "https://github.com/Ajey95/Mas_Governance"
-Documentation = "https://github.com/Ajey95/Mas_Governance/tree/main/docs"
+Documentation = "https://github.com/Ajey95/Mas_Governance/tree/v0.1.0/docs"
 
 [project.optional-dependencies]
 live = ["openai>=1.68"]
