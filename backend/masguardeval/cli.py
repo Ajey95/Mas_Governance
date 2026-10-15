@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import importlib
+import importlib.util
 import json
 import os
 import sys
@@ -12,7 +14,9 @@ from typing import Sequence
 from . import __version__
 from .dataset import GoldenDataset
 from .experiments import ExperimentSuite
+from .graph import AgentToolGraphBuilder
 from .langsmith_export import LangSmithExporter
+from .metrics import recommendations_for
 from .models import Scenario, Trace
 from .runner import EvaluationEngine
 from .store import PostgresTraceStore, TraceStore
@@ -38,6 +42,13 @@ def _parser() -> argparse.ArgumentParser:
     report.add_argument("--dataset", type=Path, required=True)
     report.add_argument("--json-out", type=Path)
     report.add_argument("--md-out", type=Path)
+
+    run_agent = commands.add_parser("run-agent", help="Run a caller-provided agent adapter through the guarded SDK.")
+    run_agent.add_argument("--dataset", type=Path, required=True)
+    run_agent.add_argument("--scenario", required=True, help="Scenario ID to run.")
+    run_agent.add_argument("--factory", required=True, help="Trusted Python file or module and callable: path.py:create_engine")
+    run_agent.add_argument("--out", type=Path, help="Write trace, metrics, and graph JSON instead of stdout.")
+    run_agent.add_argument("--sqlite", type=Path, help="Also save the trace to a local SQLite database.")
 
     export = commands.add_parser("export", help="Explicitly send one saved trace to LangSmith.")
     export.add_argument("--trace-id", required=True)
@@ -75,6 +86,63 @@ def _export(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     print(_json({"trace_id": args.trace_id, "langsmith_run_id": run_id}), end="")
 
 
+def _agent_engine(spec: str, dataset: GoldenDataset, parser: argparse.ArgumentParser) -> EvaluationEngine:
+    source, separator, name = spec.rpartition(":")
+    if not separator or not source or not name.isidentifier():
+        parser.error("--factory must be path.py:callable or module:callable")
+    if source.endswith(".py"):
+        path = Path(source).resolve()
+        if not path.is_file():
+            parser.error(f"Factory file does not exist: {path}")
+        module_spec = importlib.util.spec_from_file_location("_masguardeval_user_agent", path)
+        if module_spec is None or module_spec.loader is None:
+            parser.error(f"Cannot load factory file: {path}")
+        module = importlib.util.module_from_spec(module_spec)
+        # Local sibling imports are useful for a caller-owned integration file.
+        sys.path.insert(0, str(path.parent))
+        try:
+            module_spec.loader.exec_module(module)
+        finally:
+            sys.path.pop(0)
+    else:
+        module = importlib.import_module(source)
+    factory = getattr(module, name, None)
+    if not callable(factory):
+        parser.error(f"Factory callable not found: {spec}")
+    engine = factory(dataset)
+    if not isinstance(engine, EvaluationEngine):
+        parser.error("Factory must return an EvaluationEngine")
+    if engine.dataset is not dataset:
+        parser.error("Factory must use the supplied dataset")
+    return engine
+
+
+def _run_agent(args: argparse.Namespace, dataset: GoldenDataset, parser: argparse.ArgumentParser) -> None:
+    scenario = dataset.get(args.scenario)
+    engine = _agent_engine(args.factory, dataset, parser)
+    if args.sqlite:
+        if engine.trace_store is not None:
+            parser.error("Factory already configured a trace store; omit --sqlite")
+        engine.trace_store = TraceStore(args.sqlite)
+    trace = engine.run_guarded(scenario)
+    metrics = engine.compute_metrics(scenario, trace)
+    payload = {
+        "scenario": scenario.to_dict(),
+        "adapter": engine.adapter.name,
+        "execution_kind": getattr(engine.adapter, "execution_kind", "custom_adapter"),
+        "trace": trace.to_dict(),
+        "metrics": {key: value.to_dict() for key, value in metrics.items()},
+        "graph": AgentToolGraphBuilder().build(scenario, trace),
+        "recommendations": recommendations_for(metrics),
+    }
+    rendered = _json(payload)
+    if args.out:
+        _write(args.out, rendered)
+        print(f"Wrote guarded agent run JSON to {args.out}", file=sys.stderr)
+    else:
+        print(rendered, end="")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
@@ -83,6 +151,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             _export(args, parser)
             return 0
         dataset = GoldenDataset.load(args.dataset)
+        if args.command == "run-agent":
+            _run_agent(args, dataset, parser)
+            return 0
         if args.command == "validate":
             print(_json({"valid": True, "scenario_count": len(dataset.scenarios)}), end="")
             return 0

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "masguardeval"
-version = "0.1.1"
+version = "0.1.2"
 description = "Risk-aware evaluation and observability framework for multi-agent LLM systems."
 readme = "README.md"
 license = "MIT"
@@ -21,7 +21,7 @@ masguardeval = "masguardeval.cli:main"
 
 [project.urls]
 Repository = "https://github.com/Ajey95/Mas_Governance"
-Documentation = "https://github.com/Ajey95/Mas_Governance/tree/v0.1.1/docs"
+Documentation = "https://github.com/Ajey95/Mas_Governance/tree/v0.1.2/docs"
 
 [project.optional-dependencies]
 live = ["openai>=1.68"]

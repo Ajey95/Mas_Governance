@@ -33,13 +33,26 @@ research dataset.
 ```powershell
 masguardeval validate --dataset examples/fictional_scenarios.json
 masguardeval evaluate --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --out evaluation.json
+masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out agent-run.json --sqlite runs.sqlite3
 masguardeval report --dataset examples/fictional_scenarios.json --json-out report.json --md-out report.md
 masguardeval export --trace-id TRACE_ID --project my-study --sqlite runs.sqlite3
 ```
 
 `validate` loads the JSON and checks scenario structure. `evaluate` and
 `report` use the scripted reference adapter and do not claim model or human
-outcomes. `export` requires `LANGSMITH_API_KEY` and exactly one source: the
+outcomes. `run-agent` imports a trusted caller-owned `path.py:callable` or
+`module:callable`; that callable receives the loaded `GoldenDataset` and must
+return an `EvaluationEngine` configured with the caller's adapter and tool
+handlers. It runs the selected scenario **guarded only** and emits its trace,
+metrics, observed graph, and recommendations. `--sqlite` also saves the trace
+for local inspection. A factory is executable Python; only load code you trust,
+and route every side-effecting tool through the guarded engine. No unguarded
+baseline is launched by this command. A model-driven adapter may make external
+calls and must be configured by its owner. See
+[`examples/cli_agent_factory.py`](../examples/cli_agent_factory.py) for the
+fictional contract.
+
+`export` requires `LANGSMITH_API_KEY` and exactly one source: the
 `--sqlite` file or `MASGUARDEVAL_DATABASE_URL`. It sends trace content to the
 selected LangSmith project only on explicit invocation. CLI JSON goes to
 stdout unless an output path is supplied; usage and validation failures exit

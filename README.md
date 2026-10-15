@@ -42,6 +42,9 @@ as a Python package and use the
 [`masguardeval` command and SDK contract](docs/SDK_PUBLIC_API.md). The
 [runnable examples](examples/README.md) use fictional handlers and need no
 external credentials.
+The `run-agent` command loads a caller-owned Python factory and executes one
+guarded scenario with its adapter and registered tools. It writes a trace,
+metrics, and observed graph; it does not infer or intercept unwrapped tools.
 
 The public Render URL is intended for the official landing page, docs, tutorials, and examples. It does not host the evaluation API or user traces. The earlier [Render and Supabase private-preview verification](docs/DEPLOY_RENDER_SUPABASE.md) remains historical evidence of those integrations, not the current product architecture.
 

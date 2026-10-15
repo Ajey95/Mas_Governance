@@ -36,6 +36,18 @@ The JSON contains baseline and guarded traces, graphs, and applicable metrics.
 
 ## 3. Start the local dashboard and API
 
+To run a custom agent factory before starting the dashboard, try the fictional
+example. Replace the factory with your own trusted adapter and guarded tool
+handlers for a real integration:
+
+```powershell
+masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out reports/my-agent.json --sqlite reports/runs.sqlite3
+```
+
+This command runs guarded only and records trace spans, metrics, and the
+observed graph. It does not automatically discover tools or intercept an agent
+whose actions bypass the registered handlers.
+
 ```powershell
 python scripts/start_local_dashboard.py
 ```

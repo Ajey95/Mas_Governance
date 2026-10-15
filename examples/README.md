@@ -10,6 +10,7 @@ Install the package from the repository root:
 ```powershell
 python -m pip install ./backend
 python examples/custom_agent.py
+masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out reports/my-agent.json
 python -m pip install './backend[langchain,langgraph,autogen,crewai]'
 python examples/langchain_agent.py
 python examples/langgraph_agent.py
