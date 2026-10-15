@@ -7,13 +7,13 @@ not empirical safety estimates.
 
 Install with `python -m pip install masguardeval` (or use
 `python -m pip install ./backend` from a checkout). See the
-[SDK guide](https://github.com/Ajey95/Mas_Governance/blob/v0.1.0/docs/SDK.md),
-[integrations](https://github.com/Ajey95/Mas_Governance/blob/v0.1.0/docs/INTEGRATIONS.md),
-and [runnable examples](https://github.com/Ajey95/Mas_Governance/blob/v0.1.0/examples/README.md)
+[SDK guide](https://github.com/Ajey95/Mas_Governance/blob/v0.1.1/docs/SDK.md),
+[integrations](https://github.com/Ajey95/Mas_Governance/blob/v0.1.1/docs/INTEGRATIONS.md),
+and [runnable examples](https://github.com/Ajey95/Mas_Governance/blob/v0.1.1/examples/README.md)
 for the public API and integrations. The command accepts caller-supplied
 scenario datasets; run `masguardeval --help` after installation.
 
 The Python package and code under `backend/` are licensed under the
-[MIT License](https://github.com/Ajey95/Mas_Governance/blob/v0.1.0/backend/LICENSE).
+[MIT License](https://github.com/Ajey95/Mas_Governance/blob/v0.1.1/backend/LICENSE).
 The paper, study datasets, reviewer records, and other repository materials
 are outside this package license.
