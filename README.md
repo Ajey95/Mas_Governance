@@ -37,7 +37,7 @@ python scripts/start_local_dashboard.py
 
 Open `http://127.0.0.1:8000`. The launcher builds the frontend and serves it with the local API on loopback. API reference is at `http://127.0.0.1:8000/docs`. The dashboard shows scenario comparisons, live logs, saved traces, graph topology, findings, and fictional nested LangGraph probes. For frontend development, the separate Vite server remains available on `127.0.0.1:5173`.
 
-For another codebase, install [`masguardeval` 0.1.0 from PyPI](https://pypi.org/project/masguardeval/0.1.0/)
+For another codebase, install [`masguardeval` from PyPI](https://pypi.org/project/masguardeval/)
 as a Python package and use the
 [`masguardeval` command and SDK contract](docs/SDK_PUBLIC_API.md). The
 [runnable examples](examples/README.md) use fictional handlers and need no
