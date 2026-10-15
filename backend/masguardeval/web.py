@@ -18,6 +18,7 @@ COOKIE_NAME = "mge_site_session"
 SITE_TOKEN = os.environ.get("MASGUARDEVAL_SITE_TOKEN", "")
 REQUIRE_SITE_AUTH = os.environ.get("MASGUARDEVAL_REQUIRE_SITE_AUTH") == "1"
 REQUIRE_USER_AUTH = os.environ.get("MASGUARDEVAL_REQUIRE_USER_AUTH") == "1"
+PUBLIC_ORIGIN = os.environ.get("MASGUARDEVAL_PUBLIC_ORIGIN", "https://masguardeval.onrender.com").rstrip("/")
 SESSION_SECONDS = 12 * 60 * 60
 USER_ACCESS_COOKIE = "mge_user_access"
 USER_REFRESH_COOKIE = "mge_user_refresh"
@@ -26,6 +27,8 @@ if os.environ.get("MASGUARDEVAL_REQUIRE_DATABASE_URL") == "1" and not os.environ
     raise RuntimeError("MASGUARDEVAL_DATABASE_URL is required for the Render deployment")
 if REQUIRE_USER_AUTH and not os.environ.get("MASGUARDEVAL_DATABASE_URL"):
     raise RuntimeError("MASGUARDEVAL_DATABASE_URL is required for per-user trace isolation")
+if REQUIRE_USER_AUTH and not PUBLIC_ORIGIN.startswith("https://"):
+    raise RuntimeError("MASGUARDEVAL_PUBLIC_ORIGIN must use HTTPS")
 auth = (SupabaseAuth(os.environ.get("MASGUARDEVAL_SUPABASE_URL", ""),
                      os.environ.get("MASGUARDEVAL_SUPABASE_PUBLISHABLE_KEY", ""))
         if REQUIRE_USER_AUTH else None)
@@ -104,7 +107,7 @@ if REQUIRE_USER_AUTH:
             if request.method == "GET" and "text/html" in request.headers.get("accept", ""):
                 return RedirectResponse("/site-login", status_code=303)
             return JSONResponse({"detail": "Sign in to the private research preview"}, status_code=401)
-        if path in {"/user-login", "/user-register", "/user-logout"}:
+        if path in {"/user-login", "/user-register", "/user-logout", "/user-recover", "/user-reset"}:
             return await call_next(request)
 
         session = None
@@ -142,7 +145,8 @@ if REQUIRE_USER_AUTH:
         <h1>MASGuardEval</h1><p>Sign in to your private traces and reports.</p><form id="login">
         <label>Email <input type="email" name="email" required autocomplete="username"></label>
         <label>Password <input type="password" name="password" required autocomplete="current-password"></label>
-        <button>Sign in</button><button type="button" id="register">Create account</button></form><p id="message" role="alert"></p><script>
+        <button>Sign in</button><button type="button" id="register">Create account</button></form>
+        <p><a href="/user-recover">Forgot your password?</a></p><p id="message" role="alert"></p><script>
         const form=document.getElementById('login');const message=document.getElementById('message');
         async function submit(path){const body=Object.fromEntries(new FormData(form));const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         if(response.ok){if(path==='/user-login')location.replace('/');else message.textContent='Check your email to confirm your account, then sign in.';}
@@ -184,6 +188,71 @@ if REQUIRE_USER_AUTH:
         except AuthError:
             return JSONResponse({"detail": "Registration failed"}, status_code=400)
         return Response(status_code=202, headers={"Cache-Control": "no-store"})
+
+    @app.get("/user-recover", include_in_schema=False)
+    def user_recover_page() -> HTMLResponse:
+        html = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Reset password | MASGuardEval</title><style>body{font:16px system-ui;max-width:27rem;margin:8vh auto;padding:1.5rem;background:#f4f7f8;color:#17333b}
+        form{display:grid;gap:.9rem}input,button{font:inherit;padding:.75rem;border-radius:.5rem;border:1px solid #b6c9cb}button{background:#087b73;color:white;cursor:pointer}</style>
+        <h1>Reset password</h1><p>Enter your account email. If an account exists, we will send a reset link.</p>
+        <form id="recover"><label>Email <input type="email" name="email" required autocomplete="email"></label><button>Send reset link</button></form>
+        <p id="message" role="status"></p><p><a href="/user-login">Back to sign in</a></p><script>
+        document.getElementById('recover').addEventListener('submit',async event=>{event.preventDefault();
+        const email=new FormData(event.target).get('email');const response=await fetch('/user-recover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+        document.getElementById('message').textContent=response.ok?'If an account exists, check its email for a reset link.':'Unable to request a reset right now.';});</script></html>"""
+        return HTMLResponse(html, headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"})
+
+    @app.post("/user-recover", include_in_schema=False)
+    async def user_recover(request: Request) -> Response:
+        try:
+            payload = await request.json()
+        except ValueError:
+            payload = {}
+        email = payload.get("email") if isinstance(payload, dict) else None
+        if not isinstance(email, str) or len(email) > 254 or "@" not in email:
+            return JSONResponse({"detail": "Invalid email"}, status_code=422)
+        try:
+            await asyncio.to_thread(auth.request_recovery, email, PUBLIC_ORIGIN + "/user-reset")
+        except AuthError:
+            # Match the response for unknown accounts and provider-side rate limits.
+            pass
+        return Response(status_code=202, headers={"Cache-Control": "no-store"})
+
+    @app.get("/user-reset", include_in_schema=False)
+    def user_reset_page() -> HTMLResponse:
+        html = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Choose a new password | MASGuardEval</title><style>body{font:16px system-ui;max-width:27rem;margin:8vh auto;padding:1.5rem;background:#f4f7f8;color:#17333b}
+        form{display:grid;gap:.9rem}input,button{font:inherit;padding:.75rem;border-radius:.5rem;border:1px solid #b6c9cb}button{background:#087b73;color:white;cursor:pointer}</style>
+        <h1>Choose a new password</h1><form id="reset"><label>New password <input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+        <button>Update password</button></form><p id="message" role="alert"></p><p><a href="/user-login">Back to sign in</a></p><script>
+        const params=new URLSearchParams(location.hash.slice(1));const token=params.get('access_token');
+        history.replaceState(null,'',location.pathname);if(!token)document.getElementById('message').textContent='Reset link is missing or expired. Request a new one.';
+        document.getElementById('reset').addEventListener('submit',async event=>{event.preventDefault();if(!token)return;
+        const password=new FormData(event.target).get('password');const response=await fetch('/user-reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({access_token:token,password})});
+        if(response.ok){document.getElementById('message').textContent='Password updated. Sign in with your new password.';event.target.reset();}
+        else document.getElementById('message').textContent='Reset failed. Request a new link and try again.';});</script></html>"""
+        return HTMLResponse(html, headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"})
+
+    @app.post("/user-reset", include_in_schema=False)
+    async def user_reset(request: Request) -> Response:
+        try:
+            payload = await request.json()
+        except ValueError:
+            payload = {}
+        token = payload.get("access_token") if isinstance(payload, dict) else None
+        password = payload.get("password") if isinstance(payload, dict) else None
+        if (not isinstance(token, str) or not 16 <= len(token) <= 8192
+                or not isinstance(password, str) or not 8 <= len(password) <= 1024):
+            return JSONResponse({"detail": "Invalid reset request"}, status_code=422)
+        try:
+            await asyncio.to_thread(auth.user, token)
+            await asyncio.to_thread(auth.update_password, token, password)
+        except AuthError:
+            return JSONResponse({"detail": "Reset link expired or invalid"}, status_code=401)
+        response = Response(status_code=204, headers={"Cache-Control": "no-store"})
+        response.delete_cookie(USER_ACCESS_COOKIE)
+        response.delete_cookie(USER_REFRESH_COOKIE)
+        return response
 
     @app.post("/user-logout", include_in_schema=False)
     def user_logout(request: Request) -> Response:

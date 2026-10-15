@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
@@ -44,6 +45,16 @@ class SupabaseAuth:
 
     def register(self, email: str, password: str) -> None:
         self._request("/signup", method="POST", payload={"email": email, "password": password})
+
+    def request_recovery(self, email: str, redirect_url: str) -> None:
+        if not redirect_url.startswith("https://"):
+            raise ValueError("Password recovery requires an HTTPS redirect")
+        self._request("/recover?" + urlencode({"redirect_to": redirect_url}),
+                      method="POST", payload={"email": email})
+
+    def update_password(self, access_token: str, password: str) -> None:
+        self._request("/user", method="PUT", payload={"password": password},
+                      access_token=access_token)
 
     def refresh(self, refresh_token: str) -> dict:
         result = self._request("/token?grant_type=refresh_token", method="POST",

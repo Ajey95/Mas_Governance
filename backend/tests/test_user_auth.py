@@ -38,6 +38,30 @@ def test_supabase_auth_uses_publishable_key_and_auth_server(monkeypatch):
     assert requests[0][1]["Apikey"] == "sb_publishable_test"
 
 
+def test_recovery_uses_supabase_auth_and_fixed_https_redirect(monkeypatch):
+    requests = []
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *_): pass
+        def read(self): return b'{}'
+
+    def fake_urlopen(request, timeout):
+        requests.append(request)
+        return Response()
+
+    monkeypatch.setattr("masguardeval.user_auth.urlopen", fake_urlopen)
+    bridge = SupabaseAuth("https://example.supabase.co", "sb_publishable_test")
+    bridge.request_recovery("a@example.test", "https://masguardeval.onrender.com/user-reset")
+    bridge.update_password("fictional-recovery-token", "fictional-new-password")
+    assert requests[0].full_url == ("https://example.supabase.co/auth/v1/recover?"
+                                    "redirect_to=https%3A%2F%2Fmasguardeval.onrender.com%2Fuser-reset")
+    assert requests[0].get_method() == "POST"
+    assert requests[1].full_url == "https://example.supabase.co/auth/v1/user"
+    assert requests[1].get_method() == "PUT"
+    assert requests[1].headers["Authorization"] == "Bearer fictional-recovery-token"
+
+
 def test_authenticated_routes_do_not_cross_user_boundaries(tmp_path: Path):
     (tmp_path / "index.html").write_text("<h1>Dashboard</h1>", encoding="utf-8")
     environment = {**os.environ, "PYTHONPATH": str(BACKEND) + os.pathsep + os.environ.get("PYTHONPATH", ""),
@@ -70,13 +94,17 @@ class FakeAuth:
         owner = email.split('@')[0]
         return {'access_token': owner + '-access', 'refresh_token': owner + '-refresh', 'expires_in': 3600}
     def user(self, token):
-        if token not in ('alice-access', 'bob-access'): raise AuthError('bad')
+        if token not in ('alice-access', 'bob-access', 'alice-recovery-token'): raise AuthError('bad')
         owner = token.split('-')[0]
         return {'id': owner, 'email': owner + '@example.test'}
     def refresh(self, token):
         if token != 'alice-refresh': raise AuthError('bad')
         return {'access_token': 'alice-access', 'refresh_token': 'alice-refresh', 'expires_in': 3600}
     def logout(self, token): pass
+    def request_recovery(self, email, redirect_url):
+        assert redirect_url == 'https://masguardeval.onrender.com/user-reset'
+    def update_password(self, token, password):
+        assert token == 'alice-recovery-token' and password == 'fictional-new-password'
 web.auth = FakeAuth()
 
 alice = TestClient(web.app, base_url='https://testserver')
@@ -85,6 +113,12 @@ assert alice.get('/runs').status_code == 401
 assert alice.post('/user-login', json={'email':'alice@example.test','password':'fictional-password'}).status_code == 401
 assert alice.post('/site-login', json={'token':'fictional-site-token'}).status_code == 204
 assert bob.post('/site-login', json={'token':'fictional-site-token'}).status_code == 204
+assert alice.get('/user-recover').status_code == 200
+assert alice.post('/user-recover', json={'email':'alice@example.test'}).status_code == 202
+assert 'Forgot your password?' in alice.get('/user-login').text
+assert alice.get('/user-reset').status_code == 200
+assert alice.post('/user-reset', json={'access_token':'bad','password':'fictional-new-password'}).status_code == 422
+assert alice.post('/user-reset', json={'access_token':'alice-recovery-token','password':'fictional-new-password'}).status_code == 204
 assert alice.post('/user-login', json={'email':'alice@example.test','password':'fictional-password'}).status_code == 204
 assert bob.post('/user-login', json={'email':'bob@example.test','password':'fictional-password'}).status_code == 204
 assert alice.get('/runs').json()[0]['trace_id'] == 'alice-trace'
