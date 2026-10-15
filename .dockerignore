@@ -24,6 +24,7 @@ docs/*
 !docs/RELATED_WORK_AUDIT.md
 !docs/QUICKSTART.md
 !docs/SDK.md
+!docs/SDK_PUBLIC_API.md
 !docs/INTEGRATIONS.md
 !docs/API.md
 !docs/EXAMPLES.md
