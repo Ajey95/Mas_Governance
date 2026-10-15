@@ -68,8 +68,10 @@ The Python package and code under `backend/` are MIT licensed; see
 reviewer records, or other files outside `backend/`. A successful wheel build
 does not establish empirical metric validity or paper readiness.
 
-For a tagged `vX.Y.Z` release, `.github/workflows/publish-pypi.yml` checks that
-the tag matches the package version, builds and checks both archives, and uses
-PyPI Trusted Publishing from GitHub's `pypi` environment. The PyPI project
-owner must register `Ajey95/Mas_Governance`, workflow `publish-pypi.yml`, and
-environment `pypi` as a trusted publisher before pushing the first release tag.
+Version 0.1.0 was published to [PyPI](https://pypi.org/project/masguardeval/0.1.0/)
+on 2026-10-15 from tag `v0.1.0`. The [release workflow](https://github.com/Ajey95/Mas_Governance/actions/runs/38746767653)
+checked the tag and archives, then published through PyPI Trusted Publishing
+from GitHub's `pypi` environment. A clean Python 3.12 environment installed
+`masguardeval==0.1.0` directly from PyPI, passed dependency checks, and ran
+the CLI validation example. The [GitHub release](https://github.com/Ajey95/Mas_Governance/releases/tag/v0.1.0)
+attaches the exact wheel and source archive published to PyPI.

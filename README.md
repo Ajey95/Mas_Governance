@@ -50,7 +50,8 @@ npm run dev
 
 Open `http://127.0.0.1:5173`. API reference is at `http://127.0.0.1:8000/docs`. The dashboard shows scenario comparisons, an interaction timeline, the observed agent–tool graph, a live event log, saved runs, downloadable trace findings, and authenticated approval requests when configured. The direct local `masguardeval.api:app` entry point is for localhost development and has no user-auth middleware; deploy the `masguardeval.web:app` entry point with the authentication flags described in the deployment guide.
 
-For another codebase, install `masguardeval` from PyPI as a Python package and use the
+For another codebase, install [`masguardeval` 0.1.0 from PyPI](https://pypi.org/project/masguardeval/0.1.0/)
+as a Python package and use the
 [`masguardeval` command and SDK contract](docs/SDK_PUBLIC_API.md). The
 [runnable examples](examples/README.md) use fictional handlers and need no
 external credentials.
