@@ -16,7 +16,7 @@ The reference adapter is deterministic. It emits fixed agent intentions rather t
 
 The `candidate_scenarios.json` task set is generated from seven templates. Prompts and some parameters vary, but these 35 entries are **synthetic candidate tasks**, not independent ground truth or a validated golden benchmark. The dataset records `provenance: synthetic_candidate_unadjudicated` for every entry. The built-in API still loads the original seven reference cases by default. Neither set is a 500-episode empirical corpus.
 
-A separate 35-slot **blank authoring packet** can be generated with `scripts/prepare_study.py intake`. Its `preflight` check screens draft completeness, runnable mock tools, exact fixture-prompt overlap, and risk/family coverage. A supplied 35-task draft has now been converted to a technically loadable review artifact with fictional case fixtures; see the [repair record](INCOMING_DATASET_REPAIR_2026-09-26.md). The supplied authorship declaration remains unverified and the agent-authored fixture/policy adaptation needs human review before the task set is frozen.
+A separate 35-slot **blank authoring packet** can be generated with `scripts/prepare_study.py intake`. Its `preflight` check screens draft completeness, runnable mock tools, exact fixture-prompt overlap, and risk/family coverage. A supplied 35-task draft has now been converted to a technically loadable review artifact with fictional case fixtures; its local repair record is not part of the public guide set. The supplied authorship declaration remains unverified and the agent-authored fixture/policy adaptation needs human review before the task set is frozen.
 
 ## What the included evidence can support
 
