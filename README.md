@@ -1,5 +1,9 @@
 # MASGuardEval
 
+The Python package and code under [`backend/`](backend/) are available under
+the [MIT License](backend/LICENSE). This license does not cover the paper,
+study datasets, reviewer records, or other files outside `backend/`.
+
 MASGuardEval is a research **reference implementation** for tracing and testing guard decisions in a software workspace assistant. Seven reference scenarios cover unauthorized access, disclosure, unsafe tools, loops, propagation, polluted context, and conflicting agents. A separate set of 35 synthetic candidate tasks supports pilot experiments.
 
 The default adapter supplies scripted agent intents. A model-driven adapter has completed a local Ollama pilot and a small external OpenAI service smoke; independently adjudicated trials remain outstanding. Reached tools execute in a fresh, in-memory mock workspace; no real email account, file system, or shell command is used. The included results are **not evidence that a real multi-agent LLM is safe**. See [Research status](docs/RESEARCH_STATUS.md) before using results in a paper.

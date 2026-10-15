@@ -63,7 +63,13 @@ CrewAI 1.15.28. CI tests Python 3.10 and 3.12 package installs, plus a Python
 3.12 adapter job. These checks exercise fictional local tools, not live model
 agents or all possible dependency versions.
 
-There is no public package-index release or declared repository license yet.
-The repository owner must choose distribution terms before third parties can
-assume reuse rights. A successful wheel build does not establish empirical
-metric validity or paper readiness.
+The Python package and code under `backend/` are MIT licensed; see
+`backend/LICENSE`. This license does not apply to the paper, study datasets,
+reviewer records, or other files outside `backend/`. A successful wheel build
+does not establish empirical metric validity or paper readiness.
+
+For a tagged `vX.Y.Z` release, `.github/workflows/publish-pypi.yml` checks that
+the tag matches the package version, builds and checks both archives, and uses
+PyPI Trusted Publishing from GitHub's `pypi` environment. The PyPI project
+owner must register `Ajey95/Mas_Governance`, workflow `publish-pypi.yml`, and
+environment `pypi` as a trusted publisher before pushing the first release tag.
