@@ -36,6 +36,7 @@ from .frameworks import (
 )
 from .langgraph_runtime import LangGraphRun, private_postgres_checkpointer, run_langgraph_graph
 from .react_langgraph import run_model_react_langgraph
+from .multiagent_langgraph import run_model_multiagent_langgraph
 from .runner import EvaluationEngine
 from .models import EvaluationResult, ExecutionEvent, MetricResult, PolicyDecision, Scenario, Span, Trace
 from .evaluator import EvaluatorAgreement
@@ -84,6 +85,7 @@ __all__ = [
     "LangGraphRun",
     "run_langgraph_graph",
     "run_model_react_langgraph",
+    "run_model_multiagent_langgraph",
     "private_postgres_checkpointer",
     "ModelClient",
     "ModelOutput",

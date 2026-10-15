@@ -68,3 +68,15 @@ The reference reports contain UUIDs and wall-clock timestamps, so their raw JSON
 ## Paper claim guidance
 
 Describe the current artifact as an evaluation framework with a tested mock-workspace proof of concept and a local model pilot. Do not claim the metric names or formulas are novel solely because they are implemented. A novelty claim needs a related-work comparison and a validated difference in construct or method. Do not claim real-world risk reduction, human expert agreement, or time saved from this reference run. Guarded traces use the actual stop reason as their final output; the expected behavior field is a rubric, never a generated agent answer.
+
+## Local LangGraph research paths, 2026-10-15
+
+The workbench exposes a bounded two-subgraph topology probe and model-driven
+LangGraph functions for a ReAct agent and a nested Planner–Executor–Reviewer
+team. The team graph has conditional reviewer revision routing, finite rounds
+and action steps, and guarded fictional tools. Mock-client tests cover repeated
+observations, a revision cycle, an approval route, a blocked tool, and budget
+limits. A local `gemma4:latest` graph smoke on fictional `auth_001` saved a
+blocked trace; this verifies the call path, not independent agent performance.
+The public Render deployment serves only the official site; trace inspection
+and graph execution run on localhost.

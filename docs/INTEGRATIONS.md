@@ -119,6 +119,16 @@ for a local Ollama entry point. The model chooses actions, but this helper
 uses only fictional mock-workspace tools; real agent behavior and the metric
 study still need independent trials.
 
+For a multi-agent path, `run_model_multiagent_langgraph` nests Planner,
+Executor, and Reviewer graphs. The Executor uses a bounded ReAct loop; the
+Reviewer either approves or routes to another bounded Executor round. Every
+tool call still crosses the same guard session, and a block stops before
+review or further model calls. Run
+`python examples/langgraph_react.py --team --model YOUR_INSTALLED_MODEL --max-rounds 2 --max-steps 2` to exercise the
+local fictional workspace. Mocked-client tests cover revise, approve, round
+cap, and block routes. A single fictional Ollama run cannot establish study
+validity or safety.
+
 ## PostgreSQL trace storage
 
 Set `MASGUARDEVAL_DATABASE_URL` to a PostgreSQL DSN before starting the API. The API and `scripts/run_live_experiment.py` then use `PostgresTraceStore`; otherwise they use SQLite. The store creates `masguardeval.masguardeval_runs` and `masguardeval.masguardeval_spans` in a dedicated private schema, keeps scenario snapshots and span payloads in JSONB, and exposes the same `begin`, `append`, `finish`, `get`, and `list` methods as SQLite. It enables RLS without client policies. Keep the DSN in a server environment variable, never in a frontend bundle, report, or committed file.

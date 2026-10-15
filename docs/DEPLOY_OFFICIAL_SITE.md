@@ -24,6 +24,9 @@ uses local Ollama and fictional mock tools:
 python examples/langgraph_react.py --model YOUR_INSTALLED_MODEL
 ```
 
+Add `--team --max-rounds 2 --max-steps 2` to run the nested
+Planner–Executor–Reviewer graph with a conditional review loop.
+
 The former Render/Supabase private preview and its operational verification
 are retained in [the historical deployment record](DEPLOY_RENDER_SUPABASE.md).
 Its Supabase project and tables are not required to use the current local
