@@ -1,0 +1,7 @@
+# Minimal hosted Auth configuration. Push only these declared fields.
+# supabase config diff --project-ref ngwklaaqxqxttiswcnje --workdir deploy/supabase/auth-config
+project_id = "masguardeval"
+
+[auth]
+site_url = "https://masguardeval.onrender.com"
+additional_redirect_urls = ["https://masguardeval.onrender.com", "https://masguardeval.onrender.com/user-reset"]

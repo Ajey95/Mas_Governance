@@ -20,11 +20,11 @@ def test_experiment_suite_produces_tables_and_ablation_summary():
     assert "RSS" in report.metric_table
     assert report.metric_table["RSS"]["guarded_avg"] >= report.metric_table["RSS"]["baseline_avg"]
     assert {"full_guard_stack", "no_guards", "rbac_only"} <= set(report.ablation_table)
-    assert report.ablation_table["full_guard_stack"]["blocked_actions"] >= report.ablation_table["no_guards"]["blocked_actions"]
+    assert report.ablation_table["full_guard_stack"]["blocked_runs"] >= report.ablation_table["no_guards"]["blocked_runs"]
     markdown = report.to_markdown()
     assert "## Metric Summary" in markdown
     assert "| Scenario | Risk Type | Baseline RSS | Guarded RSS | RSS Delta |" in markdown
-    assert "| Guard Stack | Scenarios | Blocked Actions | Guarded RSS Avg |" in markdown
+    assert "| Guard Stack | Scenarios | Blocked Runs | Guarded RSS Avg (n) |" in markdown
 
 
 def test_evaluator_agreement_computes_cohens_kappa_and_confusion_table():

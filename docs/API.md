@@ -12,11 +12,11 @@ http://127.0.0.1:8000
 
 ## Authentication
 
-Local prototype endpoints do not require authentication.
+The local `masguardeval.api:app` prototype has no user login; bind it to localhost. The Render entry point, `masguardeval.web:app`, has a shared research preview gate and, when `MASGUARDEVAL_REQUIRE_USER_AUTH=1`, a second Supabase Auth sign-in. Browser sessions use Secure, HttpOnly cookies. Saved runs, graphs, findings, reference runs, and streams are scoped to the verified user ID. A missing or invalid user session returns 401; HTML navigation redirects to `/user-login` after the preview gate. `GET /user-session` reports the signed-in email, and `POST /user-logout` clears the session. Approval endpoints additionally require `MASGUARDEVAL_APPROVAL_TOKEN` and an `Authorization: Bearer ...` header; if the token is unset, they return 503. Do not expose the local unprotected API to untrusted networks or feed it private production data.
 
 ## Response Format
 
-All endpoints return JSON.
+All endpoints return JSON except `GET /stream/{scenario_id}`, which emits server-sent events (`span`, then `complete` or `error`).
 
 ## Live Reference
 
@@ -96,8 +96,24 @@ Response includes:
 | `guarded_trace` | Guarded execution trace. |
 | `baseline_metrics` | Metric results for baseline run. |
 | `guarded_metrics` | Metric results for guarded run. |
-| `risk_reduction` | Per-metric deltas. |
+| `risk_reduction` | Per-metric deltas where both runs are applicable. |
 | `recommendations` | Guard suggestions. |
+| `baseline_graph`, `guarded_graph` | Observed agent–tool graph with edges linked to trace spans. |
+
+### Graph, stream, and durable run endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /graph/{scenario_id}?mode=guarded` | Run and return the directed agent–tool graph for one reference scenario. |
+| `GET /stream/{scenario_id}?mode=guarded` | Stream spans as they are recorded and finish with the complete trace and metrics. |
+| `GET /runs?limit=30` | List saved traces, newest first. |
+| `GET /runs/{trace_id}` | Retrieve one persisted trace and its spans. |
+| `GET /runs/{trace_id}/graph` | Rebuild a graph from the persisted trace. |
+| `GET /runs/{trace_id}/findings` | Return an evidence-linked descriptive findings report for that trace; this is not a human-adjudicated outcome. |
+| `GET /approvals` | List pending requests; bearer token required. |
+| `POST /approvals/{request_id}` | Decide a request with JSON `{"approve":true,"reason":"..."}`; bearer token required. |
+
+The API loads `datasets/golden_scenarios.json` by default. Set `MASGUARDEVAL_DATASET_PATH` to `datasets/candidate_scenarios.json` before starting Uvicorn to use the 35 candidate tasks in the dashboard. The Python SDK and live experiment CLI also accept another dataset path. The trace database defaults to `reports/runs.sqlite3` and can be set with `MASGUARDEVAL_TRACE_DB`. Set `MASGUARDEVAL_DATABASE_URL` to use PostgreSQL JSONB storage instead; see [Integrations](INTEGRATIONS.md).
 
 Example Python client:
 
@@ -108,12 +124,14 @@ response = requests.get("http://127.0.0.1:8000/evaluate/auth_001", timeout=10)
 response.raise_for_status()
 
 data = response.json()
-print(data["guarded_metrics"]["TSP"]["score"])
+metric = data["guarded_metrics"]["TSP"]
+print(metric["score"] if metric["applicable"] else "N/A")
 ```
 
 ### `GET /dashboard`
 
 Run all scenarios and return the payload used by the React dashboard.
+This preview does not save its reference traces to the run history. `GET /evaluate/{scenario_id}` and `GET /stream/{scenario_id}` save their executions.
 
 ```powershell
 curl http://127.0.0.1:8000/dashboard
@@ -197,7 +215,7 @@ Example 404:
 ## Regenerate OpenAPI
 
 ```powershell
-py -3.11 scripts\export_openapi.py
+python scripts\export_openapi.py
 ```
 
 Output:

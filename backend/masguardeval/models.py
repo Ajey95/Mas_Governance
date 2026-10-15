@@ -24,7 +24,13 @@ SpanType = Literal[
     "memory_operation",
     "guard_decision",
     "final_response",
+    "graph_node",
+    "graph_transition",
+    "graph_checkpoint",
+    "graph_interrupt",
 ]
+
+GRAPH_OBSERVATION_TYPES = frozenset({"graph_node", "graph_transition", "graph_checkpoint", "graph_interrupt"})
 
 
 class PolicyDecision(str, Enum):
@@ -49,6 +55,14 @@ class Scenario:
     required_tools: list[str] = field(default_factory=list)
     authorized_roles: list[str] = field(default_factory=lambda: ["owner"])
     parameter_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
+    subject_attributes: dict[str, str] = field(default_factory=dict)
+    attribute_policies: dict[str, dict[str, Any]] = field(default_factory=dict)
+    high_risk_tools: list[str] = field(default_factory=list)
+    sensitive_tools: list[str] = field(default_factory=list)
+    resource_attributes: dict[str, dict[str, str]] = field(default_factory=dict)
+    workspace_fixture: dict[str, Any] = field(default_factory=dict)
+    reference_events: list[dict[str, Any]] = field(default_factory=list)
+    provenance: str = "reference_case_study"
     tags: list[str] = field(default_factory=list)
 
     @classmethod
@@ -66,6 +80,14 @@ class Scenario:
             required_tools=list(payload.get("required_tools", payload.get("allowed_tools", []))),
             authorized_roles=list(payload.get("authorized_roles", ["owner"])),
             parameter_schema=dict(payload.get("parameter_schema", {})),
+            subject_attributes=dict(payload.get("subject_attributes", {})),
+            attribute_policies=dict(payload.get("attribute_policies", {})),
+            high_risk_tools=list(payload.get("high_risk_tools", [])),
+            sensitive_tools=list(payload.get("sensitive_tools", [])),
+            resource_attributes=dict(payload.get("resource_attributes", {})),
+            workspace_fixture=dict(payload.get("workspace_fixture", {})),
+            reference_events=list(payload.get("reference_events", [])),
+            provenance=str(payload.get("provenance", "reference_case_study")),
             tags=list(payload.get("tags", [])),
         )
 
@@ -82,6 +104,14 @@ class Scenario:
             "required_tools": self.required_tools,
             "authorized_roles": self.authorized_roles,
             "parameter_schema": self.parameter_schema,
+            "subject_attributes": self.subject_attributes,
+            "attribute_policies": self.attribute_policies,
+            "high_risk_tools": self.high_risk_tools,
+            "sensitive_tools": self.sensitive_tools,
+            "resource_attributes": self.resource_attributes,
+            "workspace_fixture": self.workspace_fixture,
+            "reference_events": self.reference_events,
+            "provenance": self.provenance,
             "metrics": self.metrics,
             "tags": self.tags,
         }
@@ -114,8 +144,8 @@ class Span:
     tool: str | None = None
     tool_parameters: dict[str, Any] = field(default_factory=dict)
     policy_decision: str | None = None
-    latency_ms: int = 0
-    token_usage: int = 0
+    latency_ms: float = 0
+    token_usage: int | None = None
     failure_label: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -133,8 +163,8 @@ class Span:
         tool: str | None = None,
         tool_parameters: dict[str, Any] | None = None,
         policy_decision: str | None = None,
-        latency_ms: int = 0,
-        token_usage: int = 0,
+        latency_ms: float = 0,
+        token_usage: int | None = None,
         failure_label: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> "Span":
@@ -177,6 +207,10 @@ class Span:
             "metadata": self.metadata,
         }
 
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "Span":
+        return cls(**{field_name: payload[field_name] for field_name in cls.__dataclass_fields__ if field_name in payload})
+
 
 @dataclass
 class Trace:
@@ -184,9 +218,12 @@ class Trace:
     scenario_id: str
     mode: Literal["baseline", "guarded"]
     started_at: str
+    completed_at: str | None = None
+    elapsed_ms: float | None = None
     spans: list[Span] = field(default_factory=list)
     final_response: str = ""
     blocked: bool = False
+    stop_reason: str | None = None
 
     @classmethod
     def start(cls, scenario_id: str, mode: Literal["baseline", "guarded"]) -> "Trace":
@@ -201,16 +238,27 @@ class Trace:
         self.spans.append(span)
         return span
 
+    def finish(self) -> None:
+        self.completed_at = datetime.now(timezone.utc).isoformat()
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "trace_id": self.trace_id,
             "scenario_id": self.scenario_id,
             "mode": self.mode,
             "started_at": self.started_at,
+            "completed_at": self.completed_at,
+            "elapsed_ms": self.elapsed_ms,
             "final_response": self.final_response,
             "blocked": self.blocked,
+            "stop_reason": self.stop_reason,
             "spans": [span.to_dict() for span in self.spans],
         }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "Trace":
+        fields = {field_name: payload[field_name] for field_name in cls.__dataclass_fields__ if field_name in payload and field_name != "spans"}
+        return cls(**fields, spans=[Span.from_dict(item) for item in payload.get("spans", [])])
 
 
 @dataclass(frozen=True)
@@ -222,6 +270,7 @@ class MetricResult:
     threshold: float
     interpretation: str
     details: dict[str, Any] = field(default_factory=dict)
+    applicable: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -232,6 +281,7 @@ class MetricResult:
             "threshold": self.threshold,
             "interpretation": self.interpretation,
             "details": self.details,
+            "applicable": self.applicable,
         }
 
 
@@ -243,6 +293,8 @@ class EvaluationResult:
     baseline_metrics: dict[str, MetricResult]
     guarded_metrics: dict[str, MetricResult]
     recommendations: list[str]
+    baseline_graph: dict[str, Any] | None = None
+    guarded_graph: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -253,13 +305,15 @@ class EvaluationResult:
             "guarded_metrics": {k: v.to_dict() for k, v in self.guarded_metrics.items()},
             "risk_reduction": self.risk_reduction(),
             "recommendations": self.recommendations,
+            "baseline_graph": self.baseline_graph,
+            "guarded_graph": self.guarded_graph,
         }
 
     def risk_reduction(self) -> dict[str, float]:
         reduction: dict[str, float] = {}
         for key, baseline in self.baseline_metrics.items():
             guarded = self.guarded_metrics.get(key)
-            if not guarded:
+            if not guarded or not baseline.applicable or not guarded.applicable:
                 continue
             if key in {"PHR", "CPI", "CFP", "CCR", "DT"}:
                 reduction[key] = round(baseline.score - guarded.score, 4)

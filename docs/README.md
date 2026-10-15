@@ -1,126 +1,21 @@
-# MASGuardEval Docs
+# MASGuardEval documentation
 
-Evaluate multi-agent LLM systems with golden datasets, structured traces, mathematical safety metrics, and guard benchmarking.
+MASGuardEval is a reference implementation for testing guard behavior in a mock software workspace. The default agent intentions are scripted; model-driven adapters have completed a local Ollama reference pilot. Seven reference cases and 35 synthetic candidate tasks exercise the runner and eight trace metrics. The dashboard and report commands show actual mock execution and mark metrics N/A when no valid denominator exists.
 
-MASGuardEval helps answer four practical questions:
-
-- Did the agent system behave safely?
-- Which agent, tool, or guard caused the outcome?
-- Did a mitigation reduce risk compared with baseline execution?
-- Which metric failed, and what guard should be added next?
-
-## Choose Your Path
-
-| Goal | Start here |
+| Need | Guide |
 | --- | --- |
-| Run the project locally | [Quickstart](QUICKSTART.md) |
-| Use MASGuardEval as a Python SDK | [SDK guide](SDK.md) |
-| Call the backend over HTTP | [API guide](API.md) and live Swagger UI |
-| Understand metric formulas | [Metrics reference](METRICS.md) |
-| Run research experiments | [Experiments](EXPERIMENTS.md) |
-| Integrate another agent framework | [Architecture](ARCHITECTURE.md) |
-| Copy common examples | [Examples](EXAMPLES.md) |
+| Install and run | [Quickstart](QUICKSTART.md) |
+| Integrate a custom adapter and tool handlers | [Python SDK](SDK.md) |
+| Install the library and use its command | [Package and CLI contract](SDK_PUBLIC_API.md) |
+| Run external-codebase examples | [Runnable integrations](../examples/README.md) |
+| Use LangChain, LangGraph, AutoGen, CrewAI, PostgreSQL, pgvector, or LangSmith | [Integrations](INTEGRATIONS.md) |
+| Use HTTP endpoints | [API](API.md) |
+| Understand formulas and caveats | [Metrics](METRICS.md) |
+| Reproduce reference reports | [Experiments](EXPERIMENTS.md) |
+| Understand the design | [Architecture](ARCHITECTURE.md) |
+| Assess paper readiness | [Research status](RESEARCH_STATUS.md) |
+| Run an independent study | [Paper study protocol](PAPER_STUDY_PROTOCOL.md) |
+| Author the study task set | [Study authoring guide](STUDY_AUTHORING_GUIDE.md) |
+| Check novelty claims against nearby work | [Related-work audit](RELATED_WORK_AUDIT.md) |
 
-## Documentation Map
-
-| Document | Use it when |
-| --- | --- |
-| [Quickstart](QUICKSTART.md) | You need a working local run first. |
-| [SDK guide](SDK.md) | You want to embed MASGuardEval in Python tests, CI, or notebooks. |
-| [API guide](API.md) | You want to call MASGuardEval from another service or frontend. |
-| [Examples](EXAMPLES.md) | You want copy-paste snippets for common workflows. |
-| [Metrics reference](METRICS.md) | You need the exact mathematical formulas and pass thresholds. |
-| [Experiments](EXPERIMENTS.md) | You need broader scenario tables, ablations, evaluator validation, propagation analysis, or batch execution. |
-| [Architecture](ARCHITECTURE.md) | You need system design, extension points, and scaling notes. |
-
-## What You Can Build
-
-### Evaluation pipeline
-
-Run the same scenario through a baseline system and a guarded system, then compare the results.
-
-```python
-from masguardeval import EvaluationEngine
-
-engine = EvaluationEngine.from_dataset_path("datasets/golden_scenarios.json")
-result = engine.evaluate("auth_001")
-
-print(result.baseline_metrics["TSP"].score)
-print(result.guarded_metrics["TSP"].score)
-print(result.recommendations)
-```
-
-### API service
-
-Expose evaluations to dashboards, CI jobs, notebooks, or external applications.
-
-```powershell
-py -3.11 -m uvicorn masguardeval.api:app --host 127.0.0.1 --port 8000
-```
-
-```text
-GET http://127.0.0.1:8000/evaluate/auth_001
-GET http://127.0.0.1:8000/dashboard
-```
-
-### Dashboard
-
-Inspect scenarios, baseline vs guarded metrics, trace timelines, risk reduction, and recent runs.
-
-```powershell
-cd frontend
-npm run dev
-```
-
-Open:
-
-```text
-http://127.0.0.1:5173
-```
-
-## Core Concepts
-
-| Concept | Description |
-| --- | --- |
-| Scenario | A controlled risk case from the golden dataset. |
-| Baseline run | Execution without mitigation guards. |
-| Guarded run | Execution with guard middleware enabled. |
-| Trace | Full execution record for one scenario run. |
-| Span | One agent step, tool call, guard decision, memory operation, or final response. |
-| Metric | Formula-based safety measurement computed from trace data. |
-| Guard | Middleware that can allow, block, modify, require approval, or log an event. |
-
-## Live API Docs
-
-When the backend is running:
-
-```text
-Swagger UI: http://127.0.0.1:8000/docs
-ReDoc:      http://127.0.0.1:8000/redoc
-```
-
-Use Swagger UI or ReDoc as the human-facing API reference. The checked-in [OpenAPI schema](openapi.json) is the machine-readable contract used by docs tooling and client generation.
-
-## Publishable Docs Site
-
-The docs folder includes [docs.json](docs.json), a Mintlify-style navigation config with a dedicated API Reference tab backed by [openapi.json](openapi.json).
-
-Recommended publishing options:
-
-| Tool | Best fit for this project |
-| --- | --- |
-| Mintlify | Code-first docs with generated OpenAPI API reference. |
-| Docusaurus | Markdown/MDX static docs site owned by the engineering repo. |
-| ReadMe | Hosted API explorer and API usage analytics. |
-| GitBook | Managed docs for mixed technical and non-technical teams. |
-
-## Documentation Standard
-
-These docs follow a Stripe/GitHub/Docker-style structure and MDN-style writing rules:
-
-- Start with the fastest successful path.
-- Keep concepts separate from tasks.
-- Use copy-paste code samples.
-- Keep API reference backed by OpenAPI.
-- Keep metric formulas and implementation notes close together.
-- Prefer short sections, direct headings, and scan-friendly tables.
+The included synthetic annotation pairs demonstrate the agreement calculation only. See [research status](RESEARCH_STATUS.md) for independent data and validation required for a paper.

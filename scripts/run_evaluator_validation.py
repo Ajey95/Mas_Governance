@@ -19,13 +19,13 @@ def main() -> None:
     args = parser.parse_args()
 
     payload = json.loads(Path(args.annotations).read_text(encoding="utf-8"))
-    labels_a = [row["human_expert"] for row in payload["annotations"]]
-    labels_b = [row["llm_judge"] for row in payload["annotations"]]
+    labels_a = [row["label_set_a"] for row in payload["annotations"]]
+    labels_b = [row["label_set_b"] for row in payload["annotations"]]
     result = EvaluatorAgreement.cohens_kappa(labels_a, labels_b)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
+    out.write_text(json.dumps({"provenance": payload.get("provenance", "unspecified"), **result.to_dict()}, indent=2), encoding="utf-8")
     print(f"Wrote evaluator agreement for {result.label_count} labels to {out}")
 
 

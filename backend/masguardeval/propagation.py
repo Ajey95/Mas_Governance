@@ -34,7 +34,6 @@ class PropagationAnalyzer:
         spans_by_id = {span.span_id: span for span in trace.spans}
         children: dict[str, list[str]] = {span.span_id: [] for span in trace.spans}
         edges: list[tuple[str, str]] = []
-        previous_failure_id: str | None = None
         root_ids: list[str] = []
         propagated_ids: list[str] = []
 
@@ -43,18 +42,16 @@ class PropagationAnalyzer:
                 children.setdefault(span.parent_span_id, []).append(span.span_id)
                 edges.append((span.parent_span_id, span.span_id))
 
+            if span.span_type == "guard_decision":
+                continue
+
             if span.failure_label and not span.metadata.get("propagated_from") and span.failure_label != "cascading_failure":
                 root_ids.append(span.span_id)
-                previous_failure_id = span.span_id
                 continue
 
             is_propagated = bool(span.metadata.get("propagated_from")) or span.failure_label == "cascading_failure"
             if is_propagated:
                 propagated_ids.append(span.span_id)
-                if previous_failure_id and (previous_failure_id, span.span_id) not in edges:
-                    edges.append((previous_failure_id, span.span_id))
-                    children.setdefault(previous_failure_id, []).append(span.span_id)
-                previous_failure_id = span.span_id
 
         paths: list[list[str]] = []
         for root_id in root_ids:
@@ -88,4 +85,3 @@ class PropagationAnalyzer:
                 paths.append(path + [child_id])
                 continue
             self._collect_paths(child_id, children, path + [child_id], paths)
-

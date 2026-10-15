@@ -1,12 +1,15 @@
 # Python SDK
 
 Use MASGuardEval as a Python framework inside tests, notebooks, CI jobs, or another agent system.
+The supported 0.1.x surface and installed command are in the [package contract](SDK_PUBLIC_API.md).
+Runnable fictional integrations for custom agents, LangChain, LangGraph,
+AutoGen, and CrewAI are in the [examples](../examples/README.md).
 
 ## Install
 
 ```powershell
 cd C:\path\to\Mas_Governance
-py -3.11 -m pip install -e backend
+python -m pip install -e backend
 ```
 
 ## Evaluate One Scenario
@@ -19,7 +22,7 @@ result = engine.evaluate("auth_001")
 
 print(result.scenario.scenario_id)
 print(result.baseline_metrics["TSP"].score)
-print(result.guarded_metrics["TSP"].score)
+print(result.guarded_metrics["TSP"].score if result.guarded_metrics["TSP"].applicable else "N/A")
 print(result.recommendations)
 ```
 
@@ -48,8 +51,9 @@ for item in payload["results"]:
 | `guarded_trace` | Trace from guarded execution. |
 | `baseline_metrics` | Metric results for baseline execution. |
 | `guarded_metrics` | Metric results for guarded execution. |
-| `risk_reduction` | Per-metric guarded vs baseline delta. |
+| `risk_reduction()` | Per-metric guarded vs baseline improvement where both runs are applicable; serialized as `risk_reduction`. |
 | `recommendations` | Guard suggestions for failed baseline metrics. |
+| `baseline_graph`, `guarded_graph` | Observed directed agent–tool interactions and linked failure spans. |
 
 ## Add a Custom Dataset
 
@@ -75,9 +79,27 @@ Each scenario should include:
 - `parameter_schema`
 - `metrics`
 
+Optional `subject_attributes`, `resource_attributes`, `attribute_policies`, `high_risk_tools`, and `sensitive_tools` configure ABAC, approval, and sensitive-action checks. `reference_events` lets a scripted scenario define its own concrete event sequence. Label candidate fixtures with `provenance: synthetic_candidate_unadjudicated` until independent review.
+
 ## Integrate a Custom Agent System
 
-Adapters convert an external agent system into MASGuardEval execution events.
+Adapters supply pre-execution intents to MASGuardEval. To make a guard effective with an external agent, its tool calls must go through this runner before the real tool side effect; importing an already executed log cannot prevent that side effect. The built-in adapter is scripted and does not use an LLM.
+
+`plan()` may return a list or yield intents one at a time. With a generator, the yielded expression receives the executed event's output. A blocked intent ends iteration without executing the tool or resuming the generator. This supports agents that choose their next action from tool feedback:
+
+```python
+def plan(self, scenario, mode):
+    result = yield ExecutionEvent(
+        agent="Retriever", event_type="tool_call", action="read_file",
+        user_role=scenario.user_role, tool="my_tool", parameters={"query": scenario.prompt},
+    )
+    yield ExecutionEvent(
+        agent="Responder", event_type="agent_step", action="answer",
+        user_role=scenario.user_role, output=f"Tool returned: {result}",
+    )
+```
+
+The tool must appear in the scenario allowlist and have a registered handler. When using a real external tool, run baseline experiments inside an isolated test environment because baseline mode intentionally has no guards.
 
 ```python
 from masguardeval import EvaluationEngine, GoldenDataset
@@ -110,6 +132,7 @@ class MyAgentAdapter:
 
 dataset = GoldenDataset.load("datasets/golden_scenarios.json")
 engine = EvaluationEngine(dataset=dataset, adapter=MyAgentAdapter())
+engine.register_tool("my_tool", lambda parameters, workspace: "tool result")
 result = engine.evaluate("auth_001")
 ```
 
@@ -149,6 +172,18 @@ engine.register_guard(BlockDangerousTool())
 | `Span` | One trace operation. |
 | `GuardDecision` | Guard middleware output. |
 | `MetricResult` | Score, threshold, pass/fail, and details. |
+| `TraceStore` | SQLite persistence for individual spans and completed traces. |
+| `PostgresTraceStore` | PostgreSQL JSONB persistence with the same store contract. |
+| `FrameworkSession` and `ToolSpec` | Guarded native tools for LangChain, LangGraph, AutoGen, and CrewAI. |
+| `LangSmithExporter` | Explicit upload of a completed trace and its span tree. |
+| `PgVectorScenarioIndex` | Optional similarity lookup over supplied scenario embeddings. |
+| `AgentToolGraphBuilder` | Directed observed agent/tool graph with typed edges. |
+| `LiveWorkspaceAdapter` | Model-driven Planner, Executor, Reviewer adapter. |
+| `SingleAgentWorkspaceAdapter` | Matched reason/act/observe comparator. |
+
+To use an external model client, install `backend[live]` and construct `OpenAIResponsesClient` with a pinned model. For a local Ollama pilot, use `OllamaChatClient` or `scripts/run_live_experiment.py --provider ollama`. The runner sends observed tool results back to the adapter generator. The model receives the task and available mock tools, while expected safe behavior stays in the evaluator's rubric. No external model credentials are stored in this project.
+
+See [Integrations](INTEGRATIONS.md) for native framework examples and the PostgreSQL, pgvector, and LangSmith setup.
 
 ## Common Patterns
 
@@ -160,7 +195,7 @@ from masguardeval import EvaluationEngine
 engine = EvaluationEngine.from_dataset_path("datasets/golden_scenarios.json")
 result = engine.evaluate("auth_001")
 
-failed = [key for key, metric in result.guarded_metrics.items() if not metric.passed]
+failed = [key for key, metric in result.guarded_metrics.items() if metric.applicable and not metric.passed]
 if failed:
     raise SystemExit(f"Guarded run failed metrics: {failed}")
 ```
