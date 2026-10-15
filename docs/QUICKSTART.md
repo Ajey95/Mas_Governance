@@ -34,10 +34,10 @@ masguardeval evaluate --dataset datasets/golden_scenarios.json --scenario auth_0
 
 The JSON contains baseline and guarded traces, graphs, and applicable metrics.
 
-## 3. Start the API
+## 3. Start the local dashboard and API
 
 ```powershell
-python -m uvicorn masguardeval.api:app --host 127.0.0.1 --port 8000
+python scripts/start_local_dashboard.py
 ```
 
 Verify:
@@ -52,21 +52,12 @@ Expected response:
 {"status":"ok"}
 ```
 
-## 4. Start the Dashboard
+## 4. Inspect the dashboard
 
-Open a second terminal:
-
-```powershell
-cd C:\path\to\Mas_Governance\frontend
-npm install
-npm run dev
-```
-
-Open:
-
-```text
-http://127.0.0.1:5173
-```
+Open `http://127.0.0.1:8000`. The launcher builds the frontend and serves it
+with the API on loopback. Use the nested graph probe buttons to inspect two
+subgraphs, repeated reason–act cycles, and a blocked branch. These probes are
+fictional topology checks, not live-agent performance evidence.
 
 ## 5. Generate a Report
 
@@ -91,7 +82,7 @@ The exact test count changes as the framework grows.
 | Symptom | Fix |
 | --- | --- |
 | `No module named masguardeval` | Run `python -m pip install -e backend` from the repo root. |
-| API returns connection error | Start Uvicorn on `127.0.0.1:8000`. |
+| API returns connection error | Start `python scripts/start_local_dashboard.py` and check `127.0.0.1:8000`. |
 | Dashboard says API offline | Confirm `GET /health` returns `{"status":"ok"}`. |
 | `python` has no pip | Select a Python 3.10+ installation with pip and verify `python -m pip --version`. |
 

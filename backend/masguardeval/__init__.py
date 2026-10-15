@@ -35,6 +35,7 @@ from .frameworks import (
     make_autogen_tool, make_crewai_tool, make_langchain_tool, make_langgraph_tool_node,
 )
 from .langgraph_runtime import LangGraphRun, private_postgres_checkpointer, run_langgraph_graph
+from .react_langgraph import run_model_react_langgraph
 from .runner import EvaluationEngine
 from .models import EvaluationResult, ExecutionEvent, MetricResult, PolicyDecision, Scenario, Span, Trace
 from .evaluator import EvaluatorAgreement
@@ -82,6 +83,7 @@ __all__ = [
     "make_langgraph_tool_node",
     "LangGraphRun",
     "run_langgraph_graph",
+    "run_model_react_langgraph",
     "private_postgres_checkpointer",
     "ModelClient",
     "ModelOutput",

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from contextlib import contextmanager
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Callable
 
 from .frameworks import FrameworkSession, FrameworkToolBlocked
 from .models import Trace
@@ -66,7 +66,7 @@ def run_langgraph_graph(
     input: Any,
     *,
     config: dict[str, Any] | None = None,
-    final_answer: str | None = None,
+    final_answer: str | Callable[[Any], str] | None = None,
 ) -> LangGraphRun:
     """Run a compiled graph and record actual tasks, routes, checkpoints and pauses.
 
@@ -194,5 +194,6 @@ def run_langgraph_graph(
             if not any(ns == namespace and later > step for ns, later in completed):
                 for name in nodes:
                     route(namespace, step + 1, name, "__end__")
-    trace = session.finish(final_answer or ("LangGraph interrupted; awaiting resume" if interrupted else "LangGraph completed"))
+    answer = final_answer(state) if callable(final_answer) else final_answer
+    trace = session.finish(answer or ("LangGraph interrupted; awaiting resume" if interrupted else "LangGraph completed"))
     return LangGraphRun(state, trace, interrupted, str(checkpoint_id) if checkpoint_id else None, next_nodes)

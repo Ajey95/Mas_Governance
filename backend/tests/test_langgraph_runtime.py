@@ -5,7 +5,7 @@ from typing import TypedDict
 import pytest
 
 from masguardeval import FrameworkSession, GoldenDataset, ToolSpec, TraceStore, make_langgraph_tool_node, run_langgraph_graph
-from masguardeval.reference_langgraph import run_checkpoint_resume_probe, run_reference_langgraph
+from masguardeval.reference_langgraph import run_checkpoint_resume_probe, run_nested_react_probe, run_reference_langgraph
 
 
 pytest.importorskip("langgraph")
@@ -115,3 +115,70 @@ def test_checkpoint_probe_resumes_in_separate_trace(tmp_path):
     assert resumed.state["count"] == 3
     assert store.get(paused.trace.trace_id) is not None
     assert store.get(resumed.trace.trace_id) is not None
+
+
+def test_bounded_react_cycles_across_two_nested_graphs():
+    """Exercise repeated reason/action/observation paths in separate subgraphs."""
+    class ReactState(TypedDict):
+        steps: int
+        round: int
+        observations: list[str]
+
+    session = FrameworkSession(_scenario(), framework_name="langgraph_nested", max_events=300)
+
+    def build_inner():
+        inner = StateGraph(ReactState)
+        inner.add_node("reason", lambda state: {"steps": state["steps"] + 1})
+
+        def act(state):
+            result = session.call("mock_email_search", {"date": "yesterday", "subject_only": True},
+                                  agent="NestedGraphAgent")
+            return {"observations": state["observations"] + [result]}
+
+        inner.add_node("act", act)
+        inner.add_edge(START, "reason")
+        inner.add_conditional_edges("reason", lambda state: "act" if state["steps"] <= 2 else END)
+        inner.add_edge("act", "reason")
+        return inner.compile()
+
+    outer = StateGraph(ReactState)
+    outer.add_node("graph_one", build_inner())
+    outer.add_node("reset_budget", lambda state: {"steps": 0})
+    outer.add_node("graph_two", build_inner())
+    outer.add_node("next_round", lambda state: {"steps": 0, "round": state["round"] + 1})
+    outer.add_edge(START, "graph_one")
+    outer.add_edge("graph_one", "reset_budget")
+    outer.add_edge("reset_budget", "graph_two")
+    outer.add_edge("graph_two", "next_round")
+    outer.add_conditional_edges("next_round", lambda state: "graph_one" if state["round"] < 2 else END)
+    graph = outer.compile(checkpointer=MemorySaver())
+
+    result = run_langgraph_graph(graph, session, {"steps": 0, "round": 0, "observations": []},
+                                 config={"configurable": {"thread_id": "nested-react-test"},
+                                         "recursion_limit": 80})
+    assert not result.interrupted and not result.trace.blocked
+    assert result.state["round"] == 2
+    assert len(result.state["observations"]) == 8
+    assert sum(span.span_type == "tool_call" for span in result.trace.spans) == 8
+    graph_nodes = [span for span in result.trace.spans if span.span_type == "graph_node"]
+    assert sum(span.agent == "reason" and span.metadata.get("status") == "started"
+               for span in graph_nodes) == 12
+    namespaces = {span.metadata.get("namespace", "") for span in graph_nodes}
+    assert any("graph_one" in namespace for namespace in namespaces)
+    assert any("graph_two" in namespace for namespace in namespaces)
+    assert all(not any(observation and observation in str(span.metadata)
+                       for observation in result.state["observations"]) for span in graph_nodes)
+
+
+def test_nested_probe_persists_guarded_and_blocked_routes(tmp_path):
+    store = TraceStore(tmp_path / "nested.sqlite3")
+    allowed = run_nested_react_probe(_scenario(), store)
+    assert not allowed.trace.blocked and allowed.state["round"] == 2
+    assert sum(span.span_type == "tool_call" for span in allowed.trace.spans) == 8
+    assert store.get(allowed.trace.trace_id) is not None
+
+    blocked = run_nested_react_probe(_scenario(), store, blocked_branch=True)
+    assert blocked.trace.blocked
+    assert any(span.policy_decision == "BLOCK" for span in blocked.trace.spans)
+    assert sum(span.span_type == "tool_call" for span in blocked.trace.spans) < 8
+    assert store.get(blocked.trace.trace_id) is not None

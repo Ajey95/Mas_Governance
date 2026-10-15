@@ -1,6 +1,11 @@
 # Render and Supabase deployment
 
-This is the deployed path for MASGuardEval. [Render](https://masguardeval.onrender.com) runs the React dashboard and FastAPI service in one Free-plan Docker web service in Singapore. Supabase hosts PostgreSQL, pgvector, and user authentication in Singapore. The application connects to the private `masguardeval` schema through a server-side database URL; no database password or provider API key belongs in Git or browser code.
+**Historical integration verification (2026-10-15).** This document records the
+former private dashboard deployment. The current architecture serves the
+evaluation dashboard and API on localhost and uses the public Render URL for
+landing, docs, tutorials, and examples. See [Official site deployment](DEPLOY_OFFICIAL_SITE.md).
+
+The earlier [Render](https://masguardeval.onrender.com) revision ran the React dashboard and FastAPI service in one Free-plan Docker web service in Singapore. Supabase hosted PostgreSQL, pgvector, and user authentication in Singapore. The application connected to the private `masguardeval` schema through a server-side database URL; no database password or provider API key belonged in Git or browser code.
 
 ## Prepared files
 
