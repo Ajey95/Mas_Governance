@@ -141,6 +141,7 @@ class PostgresTraceStore:
             connection.execute(f"""
                 CREATE TABLE IF NOT EXISTS {self.runs_table} (
                     trace_id TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL DEFAULT 'research-preview',
                     scenario_id TEXT NOT NULL,
                     mode TEXT NOT NULL,
                     adapter TEXT NOT NULL,
@@ -161,6 +162,7 @@ class PostgresTraceStore:
                 )
             """)
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_mge_runs_started ON {self.runs_table}(started_at DESC)")
+            connection.execute(f"CREATE INDEX IF NOT EXISTS idx_mge_runs_owner_started ON {self.runs_table}(owner_id, started_at DESC)")
             connection.execute(f"CREATE INDEX IF NOT EXISTS idx_mge_spans_trace ON {self.spans_table}(trace_id, sequence)")
             connection.execute(f"ALTER TABLE {self.runs_table} ENABLE ROW LEVEL SECURITY")
             connection.execute(f"ALTER TABLE {self.spans_table} ENABLE ROW LEVEL SECURITY")
@@ -172,37 +174,57 @@ class PostgresTraceStore:
         with self._psycopg.connect(self.dsn, row_factory=dict_row) as connection:
             yield connection
 
-    def begin(self, trace: Trace, adapter: str, scenario: Scenario) -> None:
+    def begin(self, trace: Trace, adapter: str, scenario: Scenario,
+              *, owner_id: str = "research-preview") -> None:
         from psycopg.types.json import Jsonb
 
         with self._connection() as connection:
             connection.execute(
                 f"""INSERT INTO {self.runs_table}
-                   (trace_id, scenario_id, mode, adapter, scenario_json, started_at)
-                   VALUES (%s, %s, %s, %s, %s, %s)""",
-                (trace.trace_id, trace.scenario_id, trace.mode, adapter, Jsonb(scenario.to_dict()), trace.started_at),
+                   (trace_id, owner_id, scenario_id, mode, adapter, scenario_json, started_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (trace.trace_id, owner_id, trace.scenario_id, trace.mode, adapter,
+                 Jsonb(scenario.to_dict()), trace.started_at),
             )
 
-    def append(self, span: Span) -> None:
+    def append(self, span: Span, *, owner_id: str | None = None) -> None:
         from psycopg.types.json import Jsonb
 
         with self._connection() as connection:
-            connection.execute(
-                f"INSERT INTO {self.spans_table} (trace_id, payload_json) VALUES (%s, %s)",
-                (span.trace_id, Jsonb(span.to_dict())),
-            )
+            if owner_id is None:
+                connection.execute(
+                    f"INSERT INTO {self.spans_table} (trace_id, payload_json) VALUES (%s, %s)",
+                    (span.trace_id, Jsonb(span.to_dict())),
+                )
+            else:
+                cursor = connection.execute(
+                    f"""INSERT INTO {self.spans_table} (trace_id, payload_json)
+                    SELECT %s, %s WHERE EXISTS
+                    (SELECT 1 FROM {self.runs_table} WHERE trace_id=%s AND owner_id=%s)""",
+                    (span.trace_id, Jsonb(span.to_dict()), span.trace_id, owner_id),
+                )
+                if cursor.rowcount == 0:
+                    raise PermissionError("Trace does not belong to this user")
 
-    def finish(self, trace: Trace) -> None:
+    def finish(self, trace: Trace, *, owner_id: str | None = None) -> None:
         with self._connection() as connection:
-            connection.execute(
+            cursor = connection.execute(
                 f"""UPDATE {self.runs_table} SET completed_at=%s, elapsed_ms=%s,
-                   blocked=%s, stop_reason=%s, final_response=%s WHERE trace_id=%s""",
-                (trace.completed_at, trace.elapsed_ms, trace.blocked, trace.stop_reason, trace.final_response, trace.trace_id),
+                   blocked=%s, stop_reason=%s, final_response=%s WHERE trace_id=%s"""
+                + (" AND owner_id=%s" if owner_id is not None else ""),
+                (trace.completed_at, trace.elapsed_ms, trace.blocked, trace.stop_reason,
+                 trace.final_response, trace.trace_id) + ((owner_id,) if owner_id is not None else ()),
             )
+            if owner_id is not None and cursor.rowcount == 0:
+                raise PermissionError("Trace does not belong to this user")
 
-    def get(self, trace_id: str) -> dict[str, Any] | None:
+    def get(self, trace_id: str, *, owner_id: str | None = None) -> dict[str, Any] | None:
         with self._connection() as connection:
-            run = connection.execute(f"SELECT * FROM {self.runs_table} WHERE trace_id=%s", (trace_id,)).fetchone()
+            run = connection.execute(
+                f"SELECT * FROM {self.runs_table} WHERE trace_id=%s"
+                + (" AND owner_id=%s" if owner_id is not None else ""),
+                (trace_id,) + ((owner_id,) if owner_id is not None else ()),
+            ).fetchone()
             if run is None:
                 return None
             spans = connection.execute(
@@ -218,18 +240,45 @@ class PostgresTraceStore:
             "spans": [row["payload_json"] for row in spans],
         }
 
-    def list(self, limit: int = 50) -> list[dict[str, Any]]:
+    def list(self, limit: int = 50, *, owner_id: str | None = None) -> list[dict[str, Any]]:
         if not 1 <= limit <= 200:
             raise ValueError("limit must be 1..200")
         with self._connection() as connection:
             rows = connection.execute(
                 f"""SELECT trace_id, scenario_id, mode, adapter, started_at, completed_at,
                           elapsed_ms, blocked, stop_reason
-                   FROM {self.runs_table} ORDER BY started_at DESC LIMIT %s""",
-                (limit,),
+                   FROM {self.runs_table} """
+                + ("WHERE owner_id=%s " if owner_id is not None else "")
+                + "ORDER BY started_at DESC LIMIT %s",
+                ((owner_id,) if owner_id is not None else ()) + (limit,),
             ).fetchall()
         return [
             {**row, "started_at": row["started_at"].isoformat(),
              "completed_at": row["completed_at"].isoformat() if row["completed_at"] else None}
             for row in rows
         ]
+
+
+class ScopedPostgresTraceStore:
+    """Bind every trace operation to one authenticated Supabase Auth user."""
+
+    def __init__(self, store: PostgresTraceStore, owner_id: str) -> None:
+        if not owner_id:
+            raise ValueError("owner_id is required")
+        self.store = store
+        self.owner_id = owner_id
+
+    def begin(self, trace: Trace, adapter: str, scenario: Scenario) -> None:
+        self.store.begin(trace, adapter, scenario, owner_id=self.owner_id)
+
+    def append(self, span: Span) -> None:
+        self.store.append(span, owner_id=self.owner_id)
+
+    def finish(self, trace: Trace) -> None:
+        self.store.finish(trace, owner_id=self.owner_id)
+
+    def get(self, trace_id: str) -> dict[str, Any] | None:
+        return self.store.get(trace_id, owner_id=self.owner_id)
+
+    def list(self, limit: int = 50) -> list[dict[str, Any]]:
+        return self.store.list(limit, owner_id=self.owner_id)

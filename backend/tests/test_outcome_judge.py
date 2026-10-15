@@ -57,6 +57,15 @@ def test_judge_rejects_hallucinated_evidence_and_council_keeps_failed_votes():
     assert result["uncertain"] is False
     assert result["task_failure"] is True and result["prohibited_action"] is False
     assert len(result["votes"]) == 2 and result["failures"][0]["error_type"] == "ValueError"
+    assert result["provider_complete"] is False
+    repaired = council_row(packet[0], [("one", "a", valid, {}), ("two", "b", valid, {}),
+                                       ("three", "c", valid, {})], previous=result)
+    assert repaired["provider_complete"] is True
+    assert len(repaired["votes"]) == 3 and repaired["failures"] == []
+    assert len(valid.prompts) == 3  # the two successful providers were not called again
+    with pytest.raises(ValueError, match="does not match"):
+        council_row(packet[1], [("one", "a", valid, {}), ("two", "b", valid, {}),
+                                ("three", "c", valid, {})], previous=result)
 
 
 def test_secondary_comparison_requires_human_reconciliation_and_reports_missingness():

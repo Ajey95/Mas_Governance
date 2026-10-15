@@ -9,7 +9,7 @@ from pathlib import Path
 from html import escape
 from queue import Queue
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ from .experiments import ExperimentSuite
 from .propagation import PropagationAnalyzer
 from .runner import EvaluationEngine
 from .scaling import BatchEvaluationExecutor
-from .store import PostgresTraceStore, TraceStore
+from .store import PostgresTraceStore, ScopedPostgresTraceStore, TraceStore
 from .approvals import ApprovalBroker
 from .graph import AgentToolGraphBuilder
 from .findings import analyze_trace
@@ -57,6 +57,15 @@ trace_store = (
 engine = EvaluationEngine(GoldenDataset.load(DATASET_PATH), trace_store=trace_store)
 preview_engine = EvaluationEngine(engine.dataset)
 approval_broker = ApprovalBroker()
+
+
+def request_store(request: Request):
+    if os.environ.get("MASGUARDEVAL_REQUIRE_USER_AUTH") != "1":
+        return trace_store
+    owner_id = getattr(request.state, "owner_id", None)
+    if not owner_id or not isinstance(trace_store, PostgresTraceStore):
+        raise HTTPException(status_code=401, detail="Authenticated user scope is required")
+    return ScopedPostgresTraceStore(trace_store, owner_id)
 
 
 class AgreementRequest(BaseModel):
@@ -107,9 +116,9 @@ def scenarios() -> dict[str, object]:
 
 
 @app.get("/evaluate/{scenario_id}")
-def evaluate(scenario_id: str) -> dict[str, object]:
+def evaluate(scenario_id: str, request: Request) -> dict[str, object]:
     try:
-        return engine.evaluate(scenario_id).to_dict()
+        return EvaluationEngine(engine.dataset, trace_store=request_store(request)).evaluate(scenario_id).to_dict()
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -120,18 +129,18 @@ def dashboard() -> dict[str, object]:
 
 
 @app.get("/runs")
-def saved_runs(limit: int = 50) -> list[dict[str, object]]:
+def saved_runs(request: Request, limit: int = 50) -> list[dict[str, object]]:
     try:
-        return trace_store.list(limit)
+        return request_store(request).list(limit)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/langgraph/reference-run")
-def langgraph_reference_run() -> dict[str, object]:
+def langgraph_reference_run(request: Request) -> dict[str, object]:
     """Persist a bounded fictional graph trace to verify the native integration."""
     result = run_reference_langgraph(
-        engine.dataset.get("auth_001"), trace_store,
+        engine.dataset.get("auth_001"), request_store(request),
         database_url=os.environ.get("MASGUARDEVAL_DATABASE_URL"),
     )
     return {
@@ -144,10 +153,10 @@ def langgraph_reference_run() -> dict[str, object]:
 
 
 @app.post("/langgraph/checkpoint-probe")
-def langgraph_checkpoint_probe() -> dict[str, object]:
+def langgraph_checkpoint_probe(request: Request) -> dict[str, object]:
     """Exercise a fictional interrupt/resume across fresh checkpoint connections."""
     paused, resumed = run_checkpoint_resume_probe(
-        engine.dataset.get("auth_001"), trace_store,
+        engine.dataset.get("auth_001"), request_store(request),
         database_url=os.environ.get("MASGUARDEVAL_DATABASE_URL"),
     )
     return {
@@ -161,16 +170,16 @@ def langgraph_checkpoint_probe() -> dict[str, object]:
 
 
 @app.get("/runs/{trace_id}")
-def saved_run(trace_id: str) -> dict[str, object]:
-    run = trace_store.get(trace_id)
+def saved_run(trace_id: str, request: Request) -> dict[str, object]:
+    run = request_store(request).get(trace_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Unknown trace ID")
     return run
 
 
 @app.get("/runs/{trace_id}/graph")
-def saved_run_graph(trace_id: str) -> dict[str, object]:
-    run = trace_store.get(trace_id)
+def saved_run_graph(trace_id: str, request: Request) -> dict[str, object]:
+    run = request_store(request).get(trace_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Unknown trace ID")
     scenario = Scenario.from_dict(run["scenario"]) if run.get("scenario") else engine.dataset.get(run["scenario_id"])
@@ -178,8 +187,8 @@ def saved_run_graph(trace_id: str) -> dict[str, object]:
 
 
 @app.get("/runs/{trace_id}/findings")
-def saved_run_findings(trace_id: str) -> dict[str, object]:
-    run = trace_store.get(trace_id)
+def saved_run_findings(trace_id: str, request: Request) -> dict[str, object]:
+    run = request_store(request).get(trace_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Unknown trace ID")
     scenario = Scenario.from_dict(run["scenario"]) if run.get("scenario") else engine.dataset.get(run["scenario_id"])
@@ -187,7 +196,7 @@ def saved_run_findings(trace_id: str) -> dict[str, object]:
 
 
 @app.get("/stream/{scenario_id}")
-def stream_scenario(scenario_id: str, mode: str = "guarded") -> StreamingResponse:
+def stream_scenario(scenario_id: str, request: Request, mode: str = "guarded") -> StreamingResponse:
     if mode not in {"baseline", "guarded"}:
         raise HTTPException(status_code=422, detail="mode must be baseline or guarded")
     try:
@@ -195,17 +204,20 @@ def stream_scenario(scenario_id: str, mode: str = "guarded") -> StreamingRespons
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     events: Queue[tuple[str, dict[str, object]]] = Queue()
+    scoped_engine = EvaluationEngine(engine.dataset, trace_store=request_store(request))
 
     def run() -> None:
         try:
             listener = lambda span: events.put(("span", span.to_dict()))
             if mode == "guarded":
-                approval_handler = approval_broker.request if os.environ.get("MASGUARDEVAL_APPROVAL_TOKEN") else None
-                trace = engine.run_guarded(scenario, on_span=listener, approval_handler=approval_handler)
+                owner_id = getattr(request.state, "owner_id", None)
+                approval_handler = (lambda trace, event: approval_broker.request(trace, event, owner_id=owner_id)) \
+                    if os.environ.get("MASGUARDEVAL_APPROVAL_TOKEN") else None
+                trace = scoped_engine.run_guarded(scenario, on_span=listener, approval_handler=approval_handler)
             else:
-                trace = engine.run_baseline(scenario, on_span=listener)
+                trace = scoped_engine.run_baseline(scenario, on_span=listener)
             events.put(("complete", {"trace": trace.to_dict(), "findings": analyze_trace(scenario, trace),
-                                     "metrics": {key: value.to_dict() for key, value in engine.compute_metrics(scenario, trace).items()}}))
+                                     "metrics": {key: value.to_dict() for key, value in scoped_engine.compute_metrics(scenario, trace).items()}}))
         except Exception as exc:
             events.put(("error", {"detail": str(exc)}))
 
@@ -222,19 +234,22 @@ def stream_scenario(scenario_id: str, mode: str = "guarded") -> StreamingRespons
 
 
 @app.get("/approvals")
-def pending_approvals(authorization: str | None = Header(default=None)) -> list[dict[str, object]]:
+def pending_approvals(request: Request, authorization: str | None = Header(default=None)) -> list[dict[str, object]]:
     require_approval_auth(authorization)
-    return approval_broker.list(status="pending")
+    request_store(request)
+    return approval_broker.list(status="pending", owner_id=getattr(request.state, "owner_id", None))
 
 
 @app.post("/approvals/{request_id}")
 def decide_approval(
-    request_id: str, payload: ApprovalDecisionRequest,
+    request_id: str, payload: ApprovalDecisionRequest, request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict[str, object]:
     require_approval_auth(authorization)
+    request_store(request)
     try:
-        return approval_broker.decide(request_id, payload.approve, payload.reason)
+        return approval_broker.decide(request_id, payload.approve, payload.reason,
+                                      owner_id=getattr(request.state, "owner_id", None))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Unknown approval request") from exc
     except ValueError as exc:

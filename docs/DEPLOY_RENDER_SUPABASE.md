@@ -1,6 +1,6 @@
 # Render and Supabase deployment
 
-This is the deployed path for MASGuardEval. [Render](https://masguardeval.onrender.com) runs the React dashboard and FastAPI service in one Free-plan Docker web service in Singapore. Supabase hosts PostgreSQL and pgvector in Singapore. The application connects to the private `masguardeval` schema through a server-side database URL; no database password or provider API key belongs in Git or browser code.
+This is the deployed path for MASGuardEval. [Render](https://masguardeval.onrender.com) runs the React dashboard and FastAPI service in one Free-plan Docker web service in Singapore. Supabase hosts PostgreSQL, pgvector, and user authentication in Singapore. The application connects to the private `masguardeval` schema through a server-side database URL; no database password or provider API key belongs in Git or browser code.
 
 ## Prepared files
 
@@ -8,7 +8,9 @@ This is the deployed path for MASGuardEval. [Render](https://masguardeval.onrend
 - [`Dockerfile`](../Dockerfile) builds the frontend and Python API into one image, including the LangGraph runtime adapter.
 - [`deploy/supabase/bootstrap.sql`](../deploy/supabase/bootstrap.sql) creates the private trace schema and pgvector extension.
 - [`supabase/migrations/20261015085327_masguardeval_bootstrap.sql`](../supabase/migrations/20261015085327_masguardeval_bootstrap.sql) is the CLI-managed copy of that schema, aligned with the hosted migration history.
+- [`supabase/migrations/20261015120855_trace_ownership.sql`](../supabase/migrations/20261015120855_trace_ownership.sql) assigns existing preview traces to `research-preview` and adds an indexed owner for new authenticated runs. The migration was applied to the hosted project on 2026-10-15.
 - `masguardeval.web:app` serves the frontend and API from one origin and requires a site token when the Render preview flag is enabled.
+- With `MASGUARDEVAL_REQUIRE_USER_AUTH=1`, users sign in through Supabase Auth after the research preview gate. The API validates each session against the Auth server and scopes saved traces, graphs, findings, and approval requests to the authenticated user. Tokens stay in Secure, HttpOnly cookies; refresh rotates them through Supabase Auth.
 
 ## Provisioned Supabase project
 
@@ -34,6 +36,8 @@ This verifies a reference workflow and operational storage path. It does not est
 2. Connect the reviewed Git repository and deploy the Render Blueprint. Verify `/health`, the login gate, dashboard, one streamed run, saved spans, graph, and findings through the deployed URL. Redeploy the service and verify that the trace still exists in Supabase.
 3. Run `POST /langgraph/reference-run` through the authenticated preview, then read its saved trace and graph. Run `POST /langgraph/checkpoint-probe` to verify pause/resume across separate private-schema PostgreSQL checkpointer connections using fictional data.
 
-The site token is a **shared preview gate**. It prevents anonymous access but does not identify separate users or isolate their traces. Keep the deployment private to the research team until per-user authentication and tenant isolation are implemented and tested. Do not use real customer secrets, emails, or private tool traces in the preview.
+The site token remains a **shared preview gate**. The separate Supabase Auth account identifies each user, and the backend binds new trace rows to that Auth user ID. Four traces created before the ownership migration remain under `research-preview` and are not visible through user-scoped routes. The database schema stays private, with no `anon` or `authenticated` Data API grants; the backend enforces owner filters. Keep the site token private and do not use real customer secrets or private external tool traces in the reference workflow.
+
+The Supabase Auth Site URL and redirect allowlist are set to `https://masguardeval.onrender.com` using a CLI config diff/push. Hosted email confirmation is enabled. Before inviting arbitrary external users, configure and test a suitable SMTP sender and account recovery flow; the current Free-plan email service has not been validated for general onboarding.
 
 The paper study remains separate from deployment. A successful service smoke does not validate the metrics, model outcomes, human agreement, or the scenario dataset.

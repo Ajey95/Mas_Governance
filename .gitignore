@@ -16,6 +16,9 @@ reports/ollama_*.json
 reports/*private_map*.json
 reports/*review_packet/
 reports/*judge*.json
+reports/model_judgments/
+reports/paper-build/
+reports/openai_reference_smoke_*.json
 datasets/review_packet/
 datasets/study_intake/
 datasets/task_review_packet*/

@@ -43,6 +43,7 @@ function App() {
   const [approvalToken, setApprovalToken] = useState("");
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [approvalReason, setApprovalReason] = useState("Reviewed tool request");
+  const [signedInEmail, setSignedInEmail] = useState("");
   const streamRef = useRef<EventSource | null>(null);
   async function refreshHistory() { try { setHistory(await fetchRunHistory()); } catch { setHistory([]); } }
   async function refreshApprovals() {
@@ -65,6 +66,8 @@ function App() {
     } finally { setLoading(false); }
   }
   useEffect(() => { void load(); return () => streamRef.current?.close(); }, []);
+  useEffect(() => { void fetch(`${apiBase}/user-session`).then(response => response.ok ? response.json() : null)
+    .then(value => { if (value?.enabled) setSignedInEmail(value.email ?? "Account"); }).catch(() => {}); }, []);
   useEffect(() => { if (!streaming || !approvalToken) return; const timer = window.setInterval(() => void refreshApprovals(), 1500); return () => window.clearInterval(timer); }, [streaming, approvalToken]);
   async function openSaved(id: string) {
     try {
@@ -109,6 +112,10 @@ function App() {
     try { await decideApproval(id, approvalToken, approve, approvalReason); await refreshApprovals(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Approval failed"); }
   }
+  async function signOut() {
+    await fetch(`${apiBase}/user-logout`, { method: "POST" });
+    window.location.replace(`${apiBase}/user-login`);
+  }
   const result = useMemo(() => payload?.results.find(item => item.scenario.scenario_id === scenarioId), [payload, scenarioId]);
   const referenceTrace = result ? (mode === "guarded" ? result.guarded_trace : result.baseline_trace) : null;
   const trace = savedTrace ?? liveTrace ?? referenceTrace;
@@ -116,7 +123,7 @@ function App() {
   const selectedSpan = trace?.spans.find(span => span.span_id === selectedSpanId) ?? trace?.spans[0];
 
   return <div className="app">
-    <header className="topbar"><div><div className="brand">◈ MASGuardEval</div><span className="topHint">Software workspace reference evaluation</span></div><nav><a href="#liveLog">Live logs</a><a href="#findings">Findings</a><a href={`${apiBase}/project-docs`}>Documentation</a><a href={`${apiBase}/docs`}>API</a><button onClick={() => void load()} disabled={loading}>{loading ? "Running…" : "Run evaluation"}</button></nav></header>
+    <header className="topbar"><div><div className="brand">◈ MASGuardEval</div><span className="topHint">Software workspace reference evaluation</span></div><nav><a href="#liveLog">Live logs</a><a href="#findings">Findings</a><a href={`${apiBase}/project-docs`}>Documentation</a><a href={`${apiBase}/docs`}>API</a><button onClick={() => void load()} disabled={loading}>{loading ? "Running…" : "Run evaluation"}</button>{signedInEmail && <button onClick={() => void signOut()} title={signedInEmail}>Sign out</button>}</nav></header>
     <main>
       <div className="intro"><div><p className="eyebrow">REFERENCE EXPERIMENT</p><h1>Agent safety evaluation</h1><p>Compare unguarded and guarded execution of {payload?.results.length ?? "the loaded"} scripted scenarios in an isolated mock workspace.</p></div><div className="modeNotice"><strong>{payload?.execution_kind === "isolated_mock_workspace" ? "Mock execution" : payload?.execution_kind ?? "Waiting for API"}</strong><span>{payload?.adapter ?? "No adapter loaded"}</span><small>Scores describe these runs only. They are not a validated population estimate or evidence from a live LLM.</small></div></div>
       {error && <div className="error" role="alert">API error: {error}. Start the backend and try again.</div>}

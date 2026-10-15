@@ -48,7 +48,9 @@ def main() -> None:
     council.add_argument("--packet", required=True)
     council.add_argument("--out", required=True)
     council.add_argument("--openai-model", default="gpt-4.1-mini")
-    council.add_argument("--gemini-model", default="gemini-3.8-flash")
+    council.add_argument("--gemini-model", default="gemini-2.5-flash")
+    council.add_argument("--gemini-timeout", type=float, default=120.0,
+                         help="Seconds to wait for the Gemini vote; retry preserves successful votes")
     council.add_argument("--groq-model", default="openai/gpt-oss-20b")
     council.add_argument("--resume", action="store_true")
     compare = commands.add_parser("compare")
@@ -104,7 +106,8 @@ def main() -> None:
             parser.error("Missing environment variables: " + ", ".join(missing))
         members = [
             ("openai", models["openai"], OpenAIResponsesClient(models["openai"], api_key=credentials["openai"]), {"name": models["openai"]}),
-            ("gemini", models["gemini"], GeminiNativeClient(models["gemini"], api_key=credentials["gemini"]),
+            ("gemini", models["gemini"], GeminiNativeClient(models["gemini"], api_key=credentials["gemini"],
+                                                             timeout=args.gemini_timeout),
                 {"name": models["gemini"]}),
             ("groq", models["groq"], OpenAICompatibleChatClient(models["groq"], api_key=credentials["groq"],
                 base_url="https://api.groq.com/openai/v1"), {"name": models["groq"]}),
@@ -138,13 +141,19 @@ def main() -> None:
     done = {item["blind_id"] for item in report["judgments"]}
     if len(done) != len(report["judgments"]):
         parser.error("Duplicate completed model judgments")
+    by_id = {item["blind_id"]: item for item in report["judgments"]}
     for row in packet:
-        if row["blind_id"] in done:
+        prior = by_id.get(row["blind_id"])
+        if prior is not None and (args.command != "council" or prior.get("provider_complete") is True):
             continue
         try:
-            result = (council_row(row, members) if args.command == "council" else
+            result = (council_row(row, members, previous=prior) if args.command == "council" else
                       judge_row(row, client, provider=args.provider, model=args.model, model_metadata=metadata))
-            report["judgments"].append(result)
+            if prior is None:
+                report["judgments"].append(result)
+            else:
+                report["judgments"][next(i for i, item in enumerate(report["judgments"])
+                                         if item["blind_id"] == row["blind_id"])] = result
             print(f"Judged {row['blind_id']}")
         except Exception as exc:
             report["failures"].append({"blind_id": row["blind_id"], "error_type": type(exc).__name__,
@@ -156,6 +165,8 @@ def main() -> None:
                 raise
         if len(report["judgments"]) != len(packet):
             report["status"] = "partial"
+        elif args.command == "council" and any(not item.get("provider_complete") for item in report["judgments"]):
+            report["status"] = "complete_with_provider_errors"
         elif any(item.get("uncertain") for item in report["judgments"]):
             report["status"] = "complete_with_unresolved"
         else:

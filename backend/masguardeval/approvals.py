@@ -25,6 +25,7 @@ class ApprovalRequest:
     tool: str | None
     parameters: dict[str, object]
     created_at: str
+    owner_id: str | None = None
     status: str = "pending"
     reason: str | None = None
     resolved_at: str | None = None
@@ -49,11 +50,11 @@ class ApprovalBroker:
         self._requests: dict[str, ApprovalRequest] = {}
         self._lock = Lock()
 
-    def request(self, trace: Trace, event: ExecutionEvent) -> ApprovalOutcome:
+    def request(self, trace: Trace, event: ExecutionEvent, *, owner_id: str | None = None) -> ApprovalOutcome:
         request = ApprovalRequest(
             request_id=str(uuid4()), trace_id=trace.trace_id, scenario_id=trace.scenario_id,
             agent=event.agent, tool=event.tool, parameters=dict(event.parameters),
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(), owner_id=owner_id,
         )
         with self._lock:
             self._requests[request.request_id] = request
@@ -65,15 +66,18 @@ class ApprovalBroker:
                     request.resolved_at = datetime.now(timezone.utc).isoformat()
         return ApprovalOutcome(request.status == "approved", request.request_id, request.status, request.reason or "No reason provided")
 
-    def list(self, status: str | None = None) -> list[dict[str, object]]:
+    def list(self, status: str | None = None, *, owner_id: str | None = None) -> list[dict[str, object]]:
         with self._lock:
             requests = list(self._requests.values())
-            return [request.to_dict() for request in requests if status is None or request.status == status]
+            return [request.to_dict() for request in requests
+                    if (status is None or request.status == status)
+                    and (owner_id is None or request.owner_id == owner_id)]
 
-    def decide(self, request_id: str, approve: bool, reason: str) -> dict[str, object]:
+    def decide(self, request_id: str, approve: bool, reason: str,
+               *, owner_id: str | None = None) -> dict[str, object]:
         with self._lock:
             request = self._requests.get(request_id)
-            if request is None:
+            if request is None or (owner_id is not None and request.owner_id != owner_id):
                 raise KeyError(request_id)
             if request.status != "pending":
                 raise ValueError(f"Approval is already {request.status}")

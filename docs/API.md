@@ -12,7 +12,7 @@ http://127.0.0.1:8000
 
 ## Authentication
 
-The local evaluation, graph, streaming, and saved-run endpoints do not require authentication; bind the prototype to localhost. Approval endpoints require `MASGUARDEVAL_APPROVAL_TOKEN` and an `Authorization: Bearer ...` header. If the token is unset, approval endpoints return 503. Do not expose the unprotected trace API to untrusted networks or feed it private production data.
+The local `masguardeval.api:app` prototype has no user login; bind it to localhost. The Render entry point, `masguardeval.web:app`, has a shared research preview gate and, when `MASGUARDEVAL_REQUIRE_USER_AUTH=1`, a second Supabase Auth sign-in. Browser sessions use Secure, HttpOnly cookies. Saved runs, graphs, findings, reference runs, and streams are scoped to the verified user ID. A missing or invalid user session returns 401; HTML navigation redirects to `/user-login` after the preview gate. `GET /user-session` reports the signed-in email, and `POST /user-logout` clears the session. Approval endpoints additionally require `MASGUARDEVAL_APPROVAL_TOKEN` and an `Authorization: Bearer ...` header; if the token is unset, they return 503. Do not expose the local unprotected API to untrusted networks or feed it private production data.
 
 ## Response Format
 

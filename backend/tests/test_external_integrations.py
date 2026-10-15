@@ -8,7 +8,7 @@ import pytest
 from masguardeval.dataset import GoldenDataset
 from masguardeval.langsmith_export import LangSmithExporter
 from masguardeval.models import Span, Trace
-from masguardeval.store import PostgresTraceStore
+from masguardeval.store import PostgresTraceStore, ScopedPostgresTraceStore
 from masguardeval.vector_index import PgVectorScenarioIndex
 
 
@@ -82,6 +82,7 @@ def test_langsmith_real_runtree_api_constructs_without_network():
 class FakeConnection:
     def __init__(self):
         self.statements = []
+        self.rowcount = 1
 
     def __enter__(self):
         return self
@@ -125,3 +126,27 @@ def test_postgres_store_parameterizes_trace_values_and_uses_jsonb():
 def test_vector_index_validates_dimensions_and_finite_values_before_query():
     with pytest.raises(ValueError, match="dimensions"):
         PgVectorScenarioIndex("unused", 0)
+
+
+def test_scoped_postgres_store_filters_reads_and_writes_by_owner():
+    connections = []
+
+    def connect(*_, **__):
+        connection = FakeConnection()
+        connections.append(connection)
+        return connection
+
+    with patch("psycopg.connect", side_effect=connect):
+        scoped = ScopedPostgresTraceStore(PostgresTraceStore("postgresql://example.invalid/db"), "user-a")
+        trace = Trace.start(SCENARIO.scenario_id, "guarded")
+        scoped.begin(trace, "test", SCENARIO)
+        scoped.append(Span.create(trace.trace_id, "tool_call", "agent", "owner"))
+        trace.finish()
+        scoped.finish(trace)
+        assert scoped.get("other-user-trace") is None
+        assert scoped.list() == []
+    statements = [item for connection in connections for item in connection.statements]
+    owner_sql = [(sql, params) for sql, params in statements if params is not None and "user-a" in params]
+    assert len(owner_sql) == 5
+    assert all("owner_id" in sql for sql, _ in owner_sql)
+    assert all("user-a" in params for _, params in owner_sql)

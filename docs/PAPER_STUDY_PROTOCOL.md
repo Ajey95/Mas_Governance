@@ -72,6 +72,7 @@ python scripts/judge_outcomes.py compare --packet reports/development_review_pac
 ```
 
 OpenAI, Gemini, and Groq vote independently. Each vote binds to the packet hash and records the prompt version, provider/model, response ID, cited span IDs, and rationale. A per-label majority requires two decisive votes; errors and uncertain votes remain visible. The council is a **secondary agreement and error-analysis instrument**. Adjudicated human outcomes remain the primary labels, including when the council unanimously disagrees. The comparison excludes unresolved council rows and reports their count.
+`--resume` retries only providers missing from a partial council row and preserves successful votes. A row with two decisive votes but one provider error is marked `complete_with_provider_errors`, not a complete three-provider council. The default Gemini model is the operationally tested `gemini-2.5-flash`; model versions and response IDs in the saved report are the provenance record. A one-row fictional service smoke succeeded on 2026-10-15, but a full blinded packet should only be judged after the study task set is frozen; it is not a human agreement result.
 
 The experiment manifest and SQLite database are raw evidence. Store access and retention rules are the study owner's responsibility before using confidential tasks.
 

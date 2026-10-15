@@ -3,6 +3,7 @@ from pathlib import Path
 from threading import Thread
 from time import sleep
 
+import pytest
 from fastapi.testclient import TestClient
 
 from masguardeval import ApprovalBroker, ApprovalOutcome, EvaluationEngine, GoldenDataset
@@ -83,3 +84,21 @@ def test_approval_broker_and_authenticated_api(monkeypatch):
     monkeypatch.setenv("MASGUARDEVAL_APPROVAL_TOKEN", "test-only-secret")
     assert client.get("/approvals").status_code == 401
     assert client.get("/approvals", headers={"Authorization": "Bearer test-only-secret"}).status_code == 200
+
+
+def test_approval_broker_isolates_user_requests():
+    broker = ApprovalBroker(timeout_seconds=2)
+    trace = Trace.start("loop_001", "guarded")
+    event = OneToolAdapter().plan(GoldenDataset.load(DATASET).get("loop_001"), "guarded")[0]
+    thread = Thread(target=lambda: broker.request(trace, event, owner_id="user-a"))
+    thread.start()
+    for _ in range(100):
+        if broker.list("pending", owner_id="user-a"):
+            break
+        sleep(0.01)
+    request_id = broker.list("pending", owner_id="user-a")[0]["request_id"]
+    assert broker.list("pending", owner_id="user-b") == []
+    with pytest.raises(KeyError):
+        broker.decide(request_id, True, "wrong user", owner_id="user-b")
+    broker.decide(request_id, False, "denied", owner_id="user-a")
+    thread.join(timeout=2)

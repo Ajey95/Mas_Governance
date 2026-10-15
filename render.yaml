@@ -12,6 +12,12 @@ services:
         value: "1"
       - key: MASGUARDEVAL_REQUIRE_SITE_AUTH
         value: "1"
+      - key: MASGUARDEVAL_REQUIRE_USER_AUTH
+        value: "1"
+      - key: MASGUARDEVAL_SUPABASE_URL
+        value: "https://ngwklaaqxqxttiswcnje.supabase.co"
+      - key: MASGUARDEVAL_SUPABASE_PUBLISHABLE_KEY
+        sync: false
       - key: MASGUARDEVAL_DATABASE_URL
         sync: false
       - key: MASGUARDEVAL_SITE_TOKEN

@@ -1,5 +1,6 @@
-"""Serve the dashboard and API from one origin, with a private preview gate."""
+"""Serve the dashboard and API with preview and optional per-user gates."""
 
+import asyncio
 import hmac
 import os
 import time
@@ -10,15 +11,24 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 
 from .api import ROOT, app
+from .user_auth import AuthError, SupabaseAuth
 
 
 COOKIE_NAME = "mge_site_session"
 SITE_TOKEN = os.environ.get("MASGUARDEVAL_SITE_TOKEN", "")
 REQUIRE_SITE_AUTH = os.environ.get("MASGUARDEVAL_REQUIRE_SITE_AUTH") == "1"
+REQUIRE_USER_AUTH = os.environ.get("MASGUARDEVAL_REQUIRE_USER_AUTH") == "1"
 SESSION_SECONDS = 12 * 60 * 60
+USER_ACCESS_COOKIE = "mge_user_access"
+USER_REFRESH_COOKIE = "mge_user_refresh"
 
 if os.environ.get("MASGUARDEVAL_REQUIRE_DATABASE_URL") == "1" and not os.environ.get("MASGUARDEVAL_DATABASE_URL"):
     raise RuntimeError("MASGUARDEVAL_DATABASE_URL is required for the Render deployment")
+if REQUIRE_USER_AUTH and not os.environ.get("MASGUARDEVAL_DATABASE_URL"):
+    raise RuntimeError("MASGUARDEVAL_DATABASE_URL is required for per-user trace isolation")
+auth = (SupabaseAuth(os.environ.get("MASGUARDEVAL_SUPABASE_URL", ""),
+                     os.environ.get("MASGUARDEVAL_SUPABASE_PUBLISHABLE_KEY", ""))
+        if REQUIRE_USER_AUTH else None)
 
 
 def _session_signature(expires_at: int) -> str:
@@ -74,6 +84,123 @@ if REQUIRE_SITE_AUTH:
         response.set_cookie(COOKIE_NAME, f"{expires_at}.{_session_signature(expires_at)}",
                             max_age=SESSION_SECONDS, secure=True, httponly=True, samesite="lax")
         return response
+
+
+def _set_user_cookies(response: Response, session: dict) -> None:
+    access_age = max(60, min(int(session.get("expires_in", 3600)), 3600))
+    response.set_cookie(USER_ACCESS_COOKIE, session["access_token"], max_age=access_age,
+                        secure=True, httponly=True, samesite="lax")
+    response.set_cookie(USER_REFRESH_COOKIE, session["refresh_token"], max_age=30 * 86400,
+                        secure=True, httponly=True, samesite="lax")
+
+
+if REQUIRE_USER_AUTH:
+    @app.middleware("http")
+    async def user_auth_gate(request: Request, call_next):
+        path = request.url.path
+        if path == "/health" or path == "/site-login":
+            return await call_next(request)
+        if REQUIRE_SITE_AUTH and not _valid_session(request.cookies.get(COOKIE_NAME)):
+            if request.method == "GET" and "text/html" in request.headers.get("accept", ""):
+                return RedirectResponse("/site-login", status_code=303)
+            return JSONResponse({"detail": "Sign in to the private research preview"}, status_code=401)
+        if path in {"/user-login", "/user-register", "/user-logout"}:
+            return await call_next(request)
+
+        session = None
+        user = None
+        access = request.cookies.get(USER_ACCESS_COOKIE)
+        if access:
+            try:
+                user = await asyncio.to_thread(auth.user, access)
+            except AuthError:
+                pass
+        if user is None and request.cookies.get(USER_REFRESH_COOKIE):
+            try:
+                session = await asyncio.to_thread(auth.refresh, request.cookies[USER_REFRESH_COOKIE])
+                user = await asyncio.to_thread(auth.user, session["access_token"])
+            except AuthError:
+                pass
+        if user is None:
+            if request.method == "GET" and "text/html" in request.headers.get("accept", ""):
+                return RedirectResponse("/user-login", status_code=303)
+            return JSONResponse({"detail": "Sign in with a user account"}, status_code=401)
+        request.state.owner_id = user["id"]
+        request.state.user_email = user.get("email", "")
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["Vary"] = "Cookie"
+        if session is not None:
+            _set_user_cookies(response, session)
+        return response
+
+    @app.get("/user-login", include_in_schema=False)
+    def user_login_page() -> HTMLResponse:
+        html = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>MASGuardEval user sign in</title><style>body{font:16px system-ui;max-width:27rem;margin:8vh auto;padding:1.5rem;background:#f4f7f8;color:#17333b}
+        form{display:grid;gap:.9rem}input,button{font:inherit;padding:.75rem;border-radius:.5rem;border:1px solid #b6c9cb}button{background:#087b73;color:white;cursor:pointer}</style>
+        <h1>MASGuardEval</h1><p>Sign in to your private traces and reports.</p><form id="login">
+        <label>Email <input type="email" name="email" required autocomplete="username"></label>
+        <label>Password <input type="password" name="password" required autocomplete="current-password"></label>
+        <button>Sign in</button><button type="button" id="register">Create account</button></form><p id="message" role="alert"></p><script>
+        const form=document.getElementById('login');const message=document.getElementById('message');
+        async function submit(path){const body=Object.fromEntries(new FormData(form));const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(response.ok){if(path==='/user-login')location.replace('/');else message.textContent='Check your email to confirm your account, then sign in.';}
+        else message.textContent=path==='/user-login'?'Sign in failed. Check your account details.':'Registration failed.';}
+        form.addEventListener('submit',event=>{event.preventDefault();submit('/user-login')});
+        document.getElementById('register').addEventListener('click',()=>submit('/user-register'));</script></html>"""
+        return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+    @app.post("/user-login", include_in_schema=False)
+    async def user_login(request: Request) -> Response:
+        try:
+            payload = await request.json()
+        except ValueError:
+            payload = {}
+        email = payload.get("email") if isinstance(payload, dict) else None
+        password = payload.get("password") if isinstance(payload, dict) else None
+        if not isinstance(email, str) or not isinstance(password, str) or len(email) > 254 or len(password) > 1024:
+            return JSONResponse({"detail": "Invalid sign-in request"}, status_code=422)
+        try:
+            session = await asyncio.to_thread(auth.password_login, email, password)
+        except AuthError:
+            return JSONResponse({"detail": "Sign in failed"}, status_code=401)
+        response = Response(status_code=204, headers={"Cache-Control": "no-store"})
+        _set_user_cookies(response, session)
+        return response
+
+    @app.post("/user-register", include_in_schema=False)
+    async def user_register(request: Request) -> Response:
+        try:
+            payload = await request.json()
+        except ValueError:
+            payload = {}
+        email = payload.get("email") if isinstance(payload, dict) else None
+        password = payload.get("password") if isinstance(payload, dict) else None
+        if not isinstance(email, str) or not isinstance(password, str) or len(email) > 254 or not 8 <= len(password) <= 1024:
+            return JSONResponse({"detail": "Invalid registration request"}, status_code=422)
+        try:
+            await asyncio.to_thread(auth.register, email, password)
+        except AuthError:
+            return JSONResponse({"detail": "Registration failed"}, status_code=400)
+        return Response(status_code=202, headers={"Cache-Control": "no-store"})
+
+    @app.post("/user-logout", include_in_schema=False)
+    def user_logout(request: Request) -> Response:
+        access = request.cookies.get(USER_ACCESS_COOKIE)
+        if access:
+            try:
+                auth.logout(access)
+            except AuthError:
+                pass
+        response = Response(status_code=204, headers={"Cache-Control": "no-store"})
+        response.delete_cookie(USER_ACCESS_COOKIE)
+        response.delete_cookie(USER_REFRESH_COOKIE)
+        return response
+
+    @app.get("/user-session", include_in_schema=False)
+    def user_session(request: Request) -> dict[str, object]:
+        return {"enabled": True, "email": request.state.user_email}
 
 
 FRONTEND_DIST = Path(os.environ.get("MASGUARDEVAL_FRONTEND_DIST", str(ROOT / "frontend" / "dist")))
