@@ -25,7 +25,7 @@ from .approvals import ApprovalBroker
 from .graph import AgentToolGraphBuilder
 from .findings import analyze_trace
 from .models import Scenario, Trace
-from .reference_langgraph import run_reference_langgraph
+from .reference_langgraph import run_checkpoint_resume_probe, run_reference_langgraph
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -139,6 +139,23 @@ def langgraph_reference_run() -> dict[str, object]:
         "checkpoint_id": result.checkpoint_id,
         "blocked": result.trace.blocked,
         "span_count": len(result.trace.spans),
+        "reference_only": True,
+    }
+
+
+@app.post("/langgraph/checkpoint-probe")
+def langgraph_checkpoint_probe() -> dict[str, object]:
+    """Exercise a fictional interrupt/resume across fresh checkpoint connections."""
+    paused, resumed = run_checkpoint_resume_probe(
+        engine.dataset.get("auth_001"), trace_store,
+        database_url=os.environ.get("MASGUARDEVAL_DATABASE_URL"),
+    )
+    return {
+        "paused_trace_id": paused.trace.trace_id,
+        "resumed_trace_id": resumed.trace.trace_id,
+        "thread_id": next((span.metadata.get("thread_id") for span in resumed.trace.spans
+                           if span.metadata.get("thread_id")), None),
+        "checkpoint_id": resumed.checkpoint_id,
         "reference_only": True,
     }
 

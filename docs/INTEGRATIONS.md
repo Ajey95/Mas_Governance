@@ -101,8 +101,10 @@ table access. LangGraph checkpoints contain full graph state, unlike the
 value-redacted observation spans, so only put fictional or approved data in
 the reference workflow. The web dashboard's **Run LangGraph reference**
 button calls `POST /langgraph/reference-run` with a bounded fictional metadata
-search and stores its graph trace; it is integration verification, not a paper
-study run.
+search and stores its graph trace. `POST /langgraph/checkpoint-probe` uses fixed
+fictional data to pause and resume a graph across separate checkpointer
+connections, producing two linked traces. These are integration checks, not
+paper study runs or human approval decisions.
 
 ## PostgreSQL trace storage
 

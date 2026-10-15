@@ -5,7 +5,7 @@ from typing import TypedDict
 import pytest
 
 from masguardeval import FrameworkSession, GoldenDataset, ToolSpec, TraceStore, make_langgraph_tool_node, run_langgraph_graph
-from masguardeval.reference_langgraph import run_reference_langgraph
+from masguardeval.reference_langgraph import run_checkpoint_resume_probe, run_reference_langgraph
 
 
 pytest.importorskip("langgraph")
@@ -105,3 +105,13 @@ def test_reference_graph_persists_nodes_tool_and_checkpoint(tmp_path):
     assert any(span["span_type"] == "tool_call" for span in saved["spans"])
     assert any(span["span_type"] == "graph_transition" for span in saved["spans"])
     assert {span["agent"] for span in saved["spans"] if span["span_type"] == "graph_node"} == {"search_metadata", "summarize"}
+
+
+def test_checkpoint_probe_resumes_in_separate_trace(tmp_path):
+    store = TraceStore(tmp_path / "runs.sqlite3")
+    paused, resumed = run_checkpoint_resume_probe(_scenario(), store)
+    assert paused.interrupted and not resumed.interrupted
+    assert paused.trace.trace_id != resumed.trace.trace_id
+    assert resumed.state["count"] == 3
+    assert store.get(paused.trace.trace_id) is not None
+    assert store.get(resumed.trace.trace_id) is not None
