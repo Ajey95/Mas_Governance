@@ -1,12 +1,17 @@
 # MASGuardEval documentation
 
-MASGuardEval is a reference implementation for testing guard behavior in a mock software workspace. The default agent intentions are scripted; model-driven adapters have completed a local Ollama reference pilot. Seven reference cases and 35 synthetic candidate tasks exercise the runner and eight trace metrics. The dashboard and report commands show actual mock execution and mark metrics N/A when no valid denominator exists.
+MASGuardEval is a reference implementation for testing guard behavior in a mock software workspace. The default agent intentions are scripted; model-driven adapters have completed a local Ollama reference pilot. Seven reference cases and 35 synthetic candidate tasks exercise the runner and eight trace metrics. The current published package is **0.1.2**. The dashboard and reference report show mock execution and mark metrics N/A when no valid denominator exists; `run-agent` evaluates a caller-supplied adapter in guarded mode.
+
+These links track the maintained guides on `main`. A GitHub URL containing
+`/blob/v0.1.0/` or another version tag is a snapshot of that release and does
+not gain features added in later versions.
 
 | Need | Guide |
 | --- | --- |
 | Install and run | [Quickstart](QUICKSTART.md) |
 | Integrate a custom adapter and tool handlers | [Python SDK](SDK.md) |
 | Install the library and use its command | [Package and CLI contract](SDK_PUBLIC_API.md) |
+| Run a caller-owned adapter from the CLI | [Python SDK: Run Your Agent](SDK.md#run-your-agent-from-the-cli) |
 | Run external-codebase examples | [Runnable integrations](../examples/README.md) |
 | Use LangChain, LangGraph, AutoGen, CrewAI, PostgreSQL, pgvector, or LangSmith | [Integrations](INTEGRATIONS.md) |
 | Use HTTP endpoints | [API](API.md) |
