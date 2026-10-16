@@ -16,7 +16,7 @@ These commands write files under `reports/`. They run scripted intents in a fres
 
 `run_evaluator_validation.py` demonstrates Cohen's kappa using `datasets/evaluator_annotations.json`. Those nine label pairs are **synthetic example labels**. The output includes `provenance` and must not be presented as human-versus-LLM agreement.
 
-`run_propagation_analysis.py` follows explicit parent-span links. The graph does not infer causality from mere event order. `run_scalability_batch.py` checks chunked local execution and shard manifests; it is not a performance benchmark for remote agents.
+`run_propagation_analysis.py` reports structural parent-span links separately from declared `caused_by`/`causal_parent_span_id` dependencies. Only resolved dependency links support candidate failure-propagation paths; neither nesting nor event order proves causality. `run_scalability_batch.py` checks chunked local execution and shard manifests; it is not a performance benchmark for remote agents.
 
 API equivalents: `GET /experiments`, `GET /dashboard`, `GET /propagation/{scenario_id}`, `GET /scalability/batch`, and `POST /evaluator/agreement`.
 
