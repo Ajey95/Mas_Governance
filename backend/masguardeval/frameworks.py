@@ -151,11 +151,16 @@ class FrameworkSession:
                 raise value
             return value
 
-    def call(self, tool: str, parameters: dict[str, Any], *, agent: str = "ExternalAgent") -> str:
+    def call(
+        self, tool: str, parameters: dict[str, Any], *, agent: str = "ExternalAgent",
+        caused_by: str | None = None, action_id: str | None = None,
+    ) -> str:
         if not isinstance(parameters, dict):
             raise TypeError("tool parameters must be a dictionary")
+        if action_id is not None and not action_id:
+            raise ValueError("action_id must be nonempty")
         event = ExecutionEvent(
-            agent=agent, event_type="tool_call", action=f"call:{tool}:{uuid4()}",
+            agent=agent, event_type="tool_call", action=action_id or f"call:{tool}:{uuid4()}",
             user_role=self.scenario.user_role, tool=tool, parameters=parameters,
             input=self.scenario.prompt,
             metadata={
@@ -163,26 +168,41 @@ class FrameworkSession:
                 "high_risk": tool in self.scenario.high_risk_tools,
                 "role_sensitive": tool in self.scenario.sensitive_tools,
                 "resource_attributes": self.scenario.resource_attributes.get(str(parameters.get("path", "")), {}),
+                **({"caused_by": caused_by} if caused_by is not None else {}),
             },
         )
         return str(self._submit(event))
 
-    async def acall(self, tool: str, parameters: dict[str, Any], *, agent: str = "ExternalAgent") -> str:
-        return await asyncio.to_thread(self.call, tool, parameters, agent=agent)
+    async def acall(
+        self, tool: str, parameters: dict[str, Any], *, agent: str = "ExternalAgent",
+        caused_by: str | None = None, action_id: str | None = None,
+    ) -> str:
+        return await asyncio.to_thread(self.call, tool, parameters, agent=agent,
+                                       caused_by=caused_by, action_id=action_id)
 
-    def agent_step(self, agent: str, action: str, *, output: str = "", metadata: dict[str, Any] | None = None) -> None:
+    def agent_step(
+        self, agent: str, action: str, *, output: str = "", metadata: dict[str, Any] | None = None,
+        caused_by: str | None = None,
+    ) -> str:
+        action_id = f"{action}:{uuid4()}"
         self._submit(ExecutionEvent(
-            agent=agent, event_type="agent_step", action=f"{action}:{uuid4()}",
+            agent=agent, event_type="agent_step", action=action_id,
             user_role=self.scenario.user_role, input=self.scenario.prompt, output=output,
-            metadata={"framework": self.adapter.name, **(metadata or {})},
+            metadata={"framework": self.adapter.name, **(metadata or {}),
+                      **({"caused_by": caused_by} if caused_by is not None else {})},
         ))
+        return action_id
 
-    def message(self, sender: str, recipient: str, content: str) -> None:
+    def message(self, sender: str, recipient: str, content: str, *, caused_by: str | None = None,
+                metadata: dict[str, Any] | None = None) -> str:
+        action_id = f"message:{uuid4()}"
         self._submit(ExecutionEvent(
-            agent=sender, event_type="inter_agent_message", action=f"message:{uuid4()}",
+            agent=sender, event_type="inter_agent_message", action=action_id,
             user_role=self.scenario.user_role, input=content, output=content,
-            metadata={"framework": self.adapter.name, "recipient": recipient},
+            metadata={**(metadata or {}), "framework": self.adapter.name, "recipient": recipient,
+                      **({"caused_by": caused_by} if caused_by is not None else {})},
         ))
+        return action_id
 
     def observe_graph(self, event_type: str, name: str, *, metadata: dict[str, Any] | None = None) -> str:
         """Record runtime topology without evaluating it as another agent action."""

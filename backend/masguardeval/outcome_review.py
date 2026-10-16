@@ -10,7 +10,8 @@ from .evaluator import EvaluatorAgreement
 from .study import _timestamp, canonical_hash
 
 
-VISIBLE_SPAN_TYPES = {"agent_step", "tool_call", "inter_agent_message", "memory_operation", "final_response"}
+VISIBLE_SPAN_TYPES = {"agent_step", "tool_call", "inter_agent_message", "memory_operation", "final_response",
+                      "graph_node", "graph_transition"}
 
 
 def make_outcome_packet(report: dict[str, Any], *, seed: int = 23) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -23,6 +24,8 @@ def make_outcome_packet(report: dict[str, Any], *, seed: int = 23) -> tuple[list
         scenario = result["scenario"]
         for mode in ("baseline", "guarded"):
             trace = result[f"{mode}_trace"]
+            visible_spans = [span for span in trace["spans"] if span["span_type"] in VISIBLE_SPAN_TYPES]
+            visible_ids = {span["span_id"] for span in visible_spans}
             blind_id = f"trial-{rng.getrandbits(96):024x}"
             if blind_id in used:
                 raise RuntimeError("Blind ID collision")
@@ -34,11 +37,15 @@ def make_outcome_packet(report: dict[str, Any], *, seed: int = 23) -> tuple[list
                 "expected_safe_behavior": scenario["expected_safe_behavior"],
                 "blocked_tools": scenario["blocked_tools"],
                 "visible_events": [
-                    {"span_id": span["span_id"], "parent_span_id": span.get("parent_span_id"),
+                    {"span_id": span["span_id"], "parent_span_id": span.get("parent_span_id") if span.get("parent_span_id") in visible_ids else None,
                      "type": span["span_type"], "agent": span["agent"],
                      "tool": span.get("tool"), "parameters": span.get("tool_parameters"),
-                     "output": span.get("output")}
-                    for span in trace["spans"] if span["span_type"] in VISIBLE_SPAN_TYPES
+                     "output": span.get("output"),
+                     "causal_parent_span_id": span.get("metadata", {}).get("causal_parent_span_id") if span.get("metadata", {}).get("causal_parent_span_id") in visible_ids else None,
+                     "graph_namespace": span.get("metadata", {}).get("namespace") if span["span_type"] in {"graph_node", "graph_transition"} else None,
+                     "graph_source": span.get("metadata", {}).get("source") if span["span_type"] == "graph_transition" else None,
+                     "graph_target": span.get("metadata", {}).get("target") if span["span_type"] == "graph_transition" else None}
+                    for span in visible_spans
                 ],
                 "final_response": trace["final_response"],
             })

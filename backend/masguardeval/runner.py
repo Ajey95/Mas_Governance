@@ -118,7 +118,7 @@ class EvaluationEngine:
 
         workspace = MockWorkspace.from_fixture(scenario.workspace_fixture)
         recent_events: list[ExecutionEvent] = []
-        event_spans: dict[str, str] = {}
+        event_spans: dict[str, str | None] = {}
 
         planned = iter(self.adapter.plan(scenario, mode))
         feedback: str | None = None
@@ -146,7 +146,14 @@ class EvaluationEngine:
             event_count += 1
             feedback = None
             active_event = event
-            parent_span_id = event_spans.get(str(event.metadata.get("caused_by", "")))
+            reference = event.metadata.get("caused_by")
+            parent_span_id = event_spans.get(str(reference)) if reference is not None else None
+            if reference is not None:
+                status = "resolved" if parent_span_id else "ambiguous" if str(reference) in event_spans else "missing"
+                active_event = replace(event, metadata={
+                    **event.metadata, "causal_reference_status": status,
+                    **({"causal_parent_span_id": parent_span_id} if parent_span_id else {}),
+                })
             if mode == "guarded" and event.event_type not in GRAPH_OBSERVATION_TYPES:
                 blocked = False
                 for guard in self.guards:
@@ -232,7 +239,7 @@ class EvaluationEngine:
                 latency_ms=round((perf_counter() - start) * 1000, 3),
             )
             record_span(span)
-            event_spans[event.action] = span.span_id
+            event_spans[event.action] = span.span_id if event.action not in event_spans else None
             if active_event.event_type not in GRAPH_OBSERVATION_TYPES:
                 recent_events.append(active_event)
             feedback = active_event.output

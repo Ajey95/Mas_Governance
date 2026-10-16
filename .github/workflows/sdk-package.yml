@@ -31,9 +31,14 @@ jobs:
       - run: python -m build --sdist --wheel backend --outdir reports/sdk-dist
       - run: python -m pip install reports/sdk-dist/*.whl
       - run: python -m pip check
+      - run: python -m pip install pip-audit
+      - run: python -m pip_audit -r backend/requirements.txt --progress-spinner off
       - run: masguardeval --version
       - run: masguardeval validate --dataset examples/fictional_scenarios.json
       - run: masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out reports/ci-agent.json
+      - run: masguardeval compare-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --allow-unguarded --out reports/ci-comparison.json
+      - run: masguardeval trace-report --input reports/ci-comparison.json --mode baseline --json-out reports/ci-baseline-detail.json
+      - run: masguardeval diagnosis-analyze --help
       - run: python examples/custom_agent.py
       - run: python -m pytest backend/tests/test_cli_sdk.py -q
 

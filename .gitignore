@@ -27,3 +27,7 @@ datasets/study_intake/
 datasets/task_review_packet*/
 datasets/frozen_study/
 *.pyc
+.env
+.env.*
+!.env.example
+!**/.env.example

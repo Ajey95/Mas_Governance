@@ -51,6 +51,11 @@ crewai_tool = make_crewai_tool(session, spec)
 
 The example shows the four wrapper shapes. In an actual run, create **a separate `FrameworkSession` per framework and per baseline/guarded run**; a session represents one trace. The wrappers accept a single `parameters` object matching `ExecutionEvent.parameters`. The external framework can supply model or agent reasoning; MASGuardEval observes calls sent through these wrappers. When finished, call `trace = session.finish(final_answer)` and then `session.metrics()` or `session.graph()`. If a guard blocks a call, the wrapper raises `FrameworkToolBlocked`; inspect `session.finish()` for the stop reason. If a framework converts tool errors to messages, end its agent loop when that error appears. The guard still prevents that call's handler from executing.
 
+Tool wrappers and runtime routes do not infer that one agent's information caused
+another agent's failure. For CFP and the candidate causal span graph, record
+unique `caused_by` action references through `FrameworkSession` agent/message
+hooks or a custom adapter. Missing dependencies remain unlinked in the graph.
+
 For multi-agent topology, call `session.agent_step(...)` and `session.message(sender, recipient, content)` from the framework's agent and message hooks. Native tool wrappers alone record tool calls; they cannot infer unseen internal agent messages or model tokens.
 
 ## LangGraph runtime tracing

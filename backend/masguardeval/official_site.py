@@ -26,6 +26,7 @@ GUIDES = {
     "experiments": ("EXPERIMENTS.md", "Experiments"),
     "research-status": ("RESEARCH_STATUS.md", "Research status"),
     "study-authoring": ("STUDY_AUTHORING_GUIDE.md", "Study authoring"),
+    "task-review": ("TASK_REVIEW_FORM.md", "Offline task review"),
     "study-protocol": ("PAPER_STUDY_PROTOCOL.md", "Study protocol"),
     "related-work": ("RELATED_WORK_AUDIT.md", "Related work"),
 }

@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Independent task review</title>
+  <style>
+    :root { color-scheme: light; --ink:#182632; --muted:#536575; --line:#d8e0e4; --paper:#fff; --wash:#f3f6f7; --accent:#0b6761; --accent-soft:#e6f4f0; --warn:#8c4d16; --warn-soft:#fff1dd; --danger:#a33b3b; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--wash); color:var(--ink); font:15px/1.48 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    button,input,textarea,select { font:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible { outline:3px solid #73c5b6; outline-offset:2px; }
+    .shell { max-width:1480px; margin:auto; padding:26px 30px 44px; }
+    .eyebrow { margin:0 0 5px; color:var(--accent); font-size:12px; font-weight:750; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:0; font-size:clamp(25px,3vw,36px); letter-spacing:-.035em; line-height:1.14; }
+    h2 { margin:0 0 10px; font-size:19px; letter-spacing:-.015em; }
+    h3 { margin:0 0 8px; font-size:15px; }
+    p { margin:0 0 12px; }
+    .muted { color:var(--muted); }
+    .top { display:flex; justify-content:space-between; align-items:flex-start; gap:22px; margin-bottom:23px; }
+    .top p:last-child { margin:10px 0 0; max-width:800px; }
+    .offline { flex:none; padding:7px 11px; border:1px solid #9ccbc1; background:var(--accent-soft); color:#0a5e58; font-size:12px; font-weight:750; border-radius:6px; }
+    .identity { display:grid; grid-template-columns:1fr 1fr auto; gap:14px; align-items:end; padding:18px 20px; background:var(--paper); border:1px solid var(--line); border-radius:10px; margin-bottom:18px; }
+    label { display:block; font-size:13px; font-weight:700; color:#354b5a; }
+    input[type="text"],input[type="search"],textarea { width:100%; margin-top:6px; padding:10px 11px; border:1px solid #b8c8d0; border-radius:6px; background:#fff; color:var(--ink); }
+    textarea { min-height:120px; resize:vertical; }
+    .identity-note { max-width:300px; color:var(--muted); font-size:12px; line-height:1.4; padding-bottom:4px; }
+    .layout { display:grid; grid-template-columns:minmax(245px,300px) minmax(0,1fr); gap:18px; align-items:start; }
+    .sidebar,.main { border:1px solid var(--line); background:var(--paper); border-radius:10px; }
+    .sidebar { position:sticky; top:18px; max-height:calc(100vh - 36px); display:flex; flex-direction:column; overflow:hidden; }
+    .side-top { padding:18px 18px 13px; border-bottom:1px solid var(--line); }
+    .count { color:var(--muted); font-size:13px; margin:0 0 12px; }
+    .progress { width:100%; height:7px; background:#e5ecef; border-radius:30px; overflow:hidden; margin-bottom:10px; }
+    .progress > span { display:block; height:100%; width:0; background:var(--accent); transition:width .15s ease; }
+    .list { overflow:auto; padding:7px; }
+    .case-link { display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; width:100%; text-align:left; border:1px solid transparent; border-radius:6px; background:transparent; padding:10px; color:var(--ink); }
+    .case-link:hover { background:#f2f7f6; }
+    .case-link[aria-current="true"] { background:var(--accent-soft); border-color:#a9d4c9; }
+    .case-link strong { display:block; font-size:13px; overflow-wrap:anywhere; }
+    .case-link small { display:block; color:var(--muted); font-size:11px; margin-top:2px; }
+    .dot { width:10px; height:10px; background:#c8d4d9; border-radius:50%; }
+    .dot.approve { background:#11835e; }.dot.reject { background:#bc5b39; }
+    .main { padding:25px 29px 30px; min-width:0; }
+    .case-title { display:flex; justify-content:space-between; gap:18px; align-items:start; border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:20px; }
+    .case-title h2 { font-size:23px; margin:0 0 4px; overflow-wrap:anywhere; }
+    .hash { font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--muted); overflow-wrap:anywhere; max-width:250px; text-align:right; }
+    .meta { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:20px; }
+    .meta > div { border-top:2px solid #cbdad9; padding-top:7px; min-width:0; }
+    .meta b { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+    .meta span { overflow-wrap:anywhere; }
+    .flag { background:var(--warn-soft); border-left:3px solid #d58a36; padding:10px 12px; color:var(--warn); margin:0 0 18px; border-radius:3px; font-size:13px; }
+    .section { margin:0 0 20px; }
+    .body-text { white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .info { background:#f7f9fa; border:1px solid #e3e9ec; border-radius:7px; padding:14px 16px; min-width:0; }
+    .info p:last-child { margin:0; }
+    .mono { font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; margin:0; }
+    details { border:1px solid var(--line); border-radius:7px; margin:10px 0; }
+    summary { cursor:pointer; padding:12px 14px; font-weight:700; }
+    details pre { border-top:1px solid var(--line); margin:0; padding:13px 14px; background:#fafbfc; max-height:340px; overflow:auto; }
+    .review { margin-top:25px; border-top:2px solid #bdd8d1; padding-top:20px; }
+    .checklist { color:var(--muted); font-size:13px; margin:5px 0 16px; padding-left:20px; }
+    .checklist li { margin:3px 0; }
+    .choices { display:flex; gap:11px; margin:0 0 16px; }
+    .choices label { display:flex; align-items:center; gap:7px; border:1px solid #bfcbd1; border-radius:6px; padding:9px 13px; cursor:pointer; }
+    .choices label:has(input:checked) { background:var(--accent-soft); border-color:#7cbcb0; color:#0b6159; }
+    input[type="radio"] { accent-color:var(--accent); }
+    .review-help { font-size:12px; color:var(--muted); margin:7px 0 0; }
+    .actionbar { display:flex; flex-wrap:wrap; align-items:center; gap:9px; border-top:1px solid var(--line); padding-top:19px; margin-top:23px; }
+    .actionbar .spacer { flex:1; }
+    .btn { border:1px solid #a9bec4; color:var(--ink); background:#fff; padding:9px 13px; border-radius:6px; font-weight:650; }
+    .btn:hover { background:#f3f7f6; }.btn:disabled { opacity:.45; cursor:default; }
+    .btn.primary { background:var(--accent); border-color:var(--accent); color:white; }.btn.primary:hover { background:#095650; }
+    .btn.ghost { border-color:transparent; color:var(--muted); }
+    .message { min-height:22px; margin:12px 0 0; font-size:13px; color:var(--muted); }
+    .message.error { color:var(--danger); font-weight:650; }.message.ok { color:#0b7054; }
+    footer { color:var(--muted); font-size:12px; padding:19px 2px 0; }
+    @media(max-width:950px) { .meta { grid-template-columns:repeat(2,minmax(0,1fr)); }.two { grid-template-columns:1fr; }.identity { grid-template-columns:1fr 1fr; }.identity-note { grid-column:1/-1; max-width:none; } }
+    @media(max-width:700px) { .shell { padding:18px 13px 28px; }.top { display:block; }.offline { display:inline-block; margin-top:13px; }.layout { display:flex; flex-direction:column; }.sidebar { position:static; width:100%; max-height:250px; }.main { padding:20px 17px; width:100%; }.identity { grid-template-columns:1fr; }.identity-note { grid-column:auto; }.case-title { display:block; }.hash { text-align:left; max-width:none; margin-top:8px; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div>
+        <p class="eyebrow">Independent study review</p>
+        <h1>Review tasks, one at a time</h1>
+        <p class="muted">Read the task and its mock environment, decide whether it is suitable for the study, and explain your decision. This form does not collect or verify your identity.</p>
+      </div>
+      <span class="offline">Offline · no server or account</span>
+    </header>
+    <section class="identity" aria-label="Reviewer details">
+      <label>Reviewer ID<input id="reviewerId" type="text" autocomplete="off" placeholder="e.g. reviewer_a"></label>
+      <label>Role or expertise<input id="reviewerRole" type="text" autocomplete="off" placeholder="e.g. security researcher"></label>
+      <div class="identity-note">Use an ID that differs from the other reviewer. Keep the private ID-to-person record with the study owner.</div>
+    </section>
+    <div class="layout">
+      <aside class="sidebar" aria-label="Task navigation">
+        <div class="side-top">
+          <h2>Tasks</h2>
+          <p class="count" id="progressText"></p>
+          <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+          <label>Find a task<input id="search" type="search" placeholder="ID, risk, or prompt"></label>
+        </div>
+        <div class="list" id="taskList"></div>
+      </aside>
+      <main class="main" id="main">
+        <div class="case-title">
+          <div><p class="eyebrow" id="casePosition"></p><h2 id="caseId"></h2><p class="muted" id="caseSource"></p></div>
+          <div class="hash" id="caseHash"></div>
+        </div>
+        <div class="meta">
+          <div><b>Risk</b><span id="risk"></span></div>
+          <div><b>Family</b><span id="family"></span></div>
+          <div><b>User role</b><span id="userRole"></span></div>
+          <div><b>Provenance claim</b><span id="provenance"></span></div>
+        </div>
+        <div class="flag" id="provenanceFlag" hidden>AI-revised task: inspect source and authorship evidence. A review decision does not turn AI-authored content into independently human-authored content.</div>
+        <section class="section"><h3>User request</h3><p class="body-text" id="prompt"></p></section>
+        <section class="section"><h3>Expected safe behavior</h3><p class="body-text" id="expected"></p></section>
+        <div class="two">
+          <section class="info"><h3>Tool policy</h3><p id="tools"></p></section>
+          <section class="info"><h3>Roles and tags</h3><p id="roles"></p></section>
+        </div>
+        <details><summary>Mock workspace and fixture</summary><pre class="mono" id="fixture"></pre></details>
+        <details><summary>Parameter and attribute policies</summary><pre class="mono" id="policies"></pre></details>
+        <details><summary>Metrics and scripted reference events</summary><pre class="mono" id="extras"></pre></details>
+        <section class="review" aria-label="Your decision">
+          <h2>Your review</h2>
+          <ul class="checklist">
+            <li>Is the source and stated provenance credible?</li>
+            <li>Are the request, risk category, role, and family realistic and distinct?</li>
+            <li>Do the permitted actions, prohibited actions, and safe-behavior rubric agree?</li>
+            <li>Does the mock fixture supply what the agent would need to observe?</li>
+            <li>Are the tool rules enforceable and free of private data?</li>
+          </ul>
+          <div class="choices" role="radiogroup" aria-label="Decision">
+            <label><input type="radio" name="decision" value="approve">Approve</label>
+            <label><input type="radio" name="decision" value="reject">Reject</label>
+          </div>
+          <label>Reason for your decision<textarea id="rationale" placeholder="State the evidence for approval, or name the exact change needed before this task can be accepted."></textarea></label>
+          <p class="review-help">A decision and nonempty reason mark this task complete. Your timestamp is recorded when you enter or edit a complete decision.</p>
+        </section>
+        <div class="actionbar">
+          <button class="btn" id="previous" type="button">Previous</button>
+          <button class="btn" id="next" type="button">Next</button>
+          <button class="btn" id="nextOpen" type="button">Next undecided</button>
+          <span class="spacer"></span>
+          <button class="btn" id="loadDraftButton" type="button">Load saved progress</button>
+          <input id="loadDraft" type="file" accept=".json,application/json" hidden>
+          <button class="btn" id="saveDraft" type="button">Download progress</button>
+          <button class="btn primary" id="exportFinal" type="button">Download final JSONL</button>
+        </div>
+        <p class="message" id="message" role="status" aria-live="polite"></p>
+      </main>
+    </div>
+    <footer>Source file: <span id="datasetName"></span> · Dataset hash: <span id="datasetHash"></span>. If task text changes, the study owner must generate a new form; old decisions do not transfer to changed hashes. No answers are uploaded or saved automatically. Download progress before closing this page.</footer>
+  </div>
+  <script>
+    const REVIEW_DATA = __REVIEW_DATA__;
+    const byId = new Map(REVIEW_DATA.scenarios.map(s => [s.scenario_id, s]));
+    const packet = REVIEW_DATA.packet;
+    const answers = Object.fromEntries(packet.map(row => [row.scenario_id, {decision:"", rationale:"", recorded_at:""}]));
+    let activeIndex = 0;
+    let dirty = false;
+    const $ = id => document.getElementById(id);
+    const text = (id, value) => { $(id).textContent = value == null || value === "" ? "—" : String(value); };
+    const timestamp = () => new Date().toISOString().replace(/Z$/, "+00:00");
+    const validTimestamp = value => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$/.test(value) && !Number.isNaN(Date.parse(value));
+    const complete = answer => Boolean(answer.decision && answer.rationale.trim() && answer.recorded_at);
+    const shortHash = value => value.slice(0, 12);
+
+    function showMessage(message, kind="") {
+      const el = $("message");
+      el.textContent = message;
+      el.className = "message " + kind;
+    }
+    function download(name, body, mime) {
+      const url = URL.createObjectURL(new Blob([body], {type:mime}));
+      const link = document.createElement("a");
+      link.href = url; link.download = name; document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      dirty = false;
+    }
+    function filename(stem, extension) {
+      const id = $("reviewerId").value.trim().replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40) || "reviewer";
+      return `${stem}_${id}_${shortHash(REVIEW_DATA.dataset_sha256)}.${extension}`;
+    }
+    function renderList() {
+      const query = $("search").value.trim().toLowerCase();
+      const list = $("taskList");
+      list.replaceChildren();
+      packet.forEach((row, index) => {
+        const scenario = byId.get(row.scenario_id);
+        if (query && !`${row.scenario_id} ${scenario.risk_type} ${scenario.prompt}`.toLowerCase().includes(query)) return;
+        const item = document.createElement("button");
+        item.type = "button"; item.className = "case-link";
+        item.setAttribute("aria-current", String(index === activeIndex));
+        const label = document.createElement("span");
+        const title = document.createElement("strong"); title.textContent = row.scenario_id;
+        const risk = document.createElement("small"); risk.textContent = scenario.risk_type.replaceAll("_", " ");
+        label.append(title, risk);
+        const dot = document.createElement("span");
+        dot.className = `dot ${complete(answers[row.scenario_id]) ? answers[row.scenario_id].decision : ""}`;
+        dot.setAttribute("aria-label", complete(answers[row.scenario_id]) ? answers[row.scenario_id].decision : "not reviewed");
+        item.append(label, dot);
+        item.addEventListener("click", () => { activeIndex = index; render(); $("main").scrollIntoView({block:"start", behavior:"smooth"}); });
+        list.append(item);
+      });
+      const done = packet.filter(row => complete(answers[row.scenario_id])).length;
+      text("progressText", `${done} of ${packet.length} decisions complete`);
+      $("progressBar").style.width = `${100 * done / packet.length}%`;
+    }
+    function render() {
+      const row = packet[activeIndex];
+      const scenario = byId.get(row.scenario_id);
+      const answer = answers[row.scenario_id];
+      text("casePosition", `Task ${activeIndex + 1} of ${packet.length}`);
+      text("caseId", row.scenario_id);
+      text("caseSource", scenario.source_case_study);
+      text("caseHash", `Task SHA-256: ${row.scenario_sha256}`);
+      text("risk", scenario.risk_type.replaceAll("_", " "));
+      text("family", scenario.tags.find(tag => tag.startsWith("family:"))?.slice(7) || "unspecified");
+      text("userRole", scenario.user_role);
+      text("provenance", scenario.provenance);
+      $("provenanceFlag").hidden = !scenario.provenance.startsWith("agent_revised");
+      text("prompt", scenario.prompt);
+      text("expected", scenario.expected_safe_behavior);
+      text("tools", `Allowed: ${scenario.allowed_tools.join(", ") || "none"}\nBlocked: ${scenario.blocked_tools.join(", ") || "none"}\nRequired: ${scenario.required_tools.join(", ") || "none"}`);
+      $("tools").style.whiteSpace = "pre-wrap";
+      text("roles", `Authorized roles: ${scenario.authorized_roles.join(", ") || "none"}\nTags: ${scenario.tags.join(", ") || "none"}`);
+      $("roles").style.whiteSpace = "pre-wrap";
+      text("fixture", JSON.stringify(scenario.workspace_fixture, null, 2));
+      text("policies", JSON.stringify({parameter_schema:scenario.parameter_schema,subject_attributes:scenario.subject_attributes,attribute_policies:scenario.attribute_policies,resource_attributes:scenario.resource_attributes,high_risk_tools:scenario.high_risk_tools,sensitive_tools:scenario.sensitive_tools}, null, 2));
+      text("extras", JSON.stringify({metrics:scenario.metrics,reference_events:scenario.reference_events}, null, 2));
+      document.querySelectorAll('input[name="decision"]').forEach(input => { input.checked = input.value === answer.decision; });
+      $("rationale").value = answer.rationale;
+      $("previous").disabled = activeIndex === 0;
+      $("next").disabled = activeIndex === packet.length - 1;
+      $("nextOpen").disabled = packet.every(row => complete(answers[row.scenario_id]));
+      renderList();
+    }
+    function updateAnswer() {
+      const answer = answers[packet[activeIndex].scenario_id];
+      answer.decision = document.querySelector('input[name="decision"]:checked')?.value || "";
+      answer.rationale = $("rationale").value;
+      answer.recorded_at = answer.decision && answer.rationale.trim() ? timestamp() : "";
+      dirty = true;
+      renderList();
+      showMessage("Decision kept in this page. Download progress before closing it.");
+    }
+    function saveDraft() {
+      const draft = {format:"masguardeval-task-review-draft-v1",dataset_sha256:REVIEW_DATA.dataset_sha256,reviewer_id:$("reviewerId").value.trim(),reviewer_role:$("reviewerRole").value.trim(),answers};
+      download(filename("task_review_progress", "json"), JSON.stringify(draft, null, 2) + "\n", "application/json");
+      showMessage("Progress file downloaded. Keep it private and reload it here to continue.", "ok");
+    }
+    async function loadDraft(file) {
+      if (!file) return;
+      try {
+        const draft = JSON.parse(await file.text());
+        if (draft.format !== "masguardeval-task-review-draft-v1" || draft.dataset_sha256 !== REVIEW_DATA.dataset_sha256) throw new Error("This progress file belongs to a different task version.");
+        if (!draft.answers || Object.keys(draft.answers).length !== packet.length || packet.some(row => !draft.answers[row.scenario_id])) throw new Error("Progress file does not cover this packet.");
+        for (const row of packet) {
+          const answer = draft.answers[row.scenario_id];
+          if (!["", "approve", "reject"].includes(answer.decision) || typeof answer.rationale !== "string" || typeof answer.recorded_at !== "string" || (answer.recorded_at && !validTimestamp(answer.recorded_at))) throw new Error(`Invalid saved answer for ${row.scenario_id}.`);
+        }
+        for (const row of packet) answers[row.scenario_id] = {...draft.answers[row.scenario_id]};
+        $("reviewerId").value = String(draft.reviewer_id || "");
+        $("reviewerRole").value = String(draft.reviewer_role || "");
+        const firstOpen = packet.findIndex(row => !complete(answers[row.scenario_id]));
+        activeIndex = firstOpen >= 0 ? firstOpen : 0;
+        dirty = true;
+        render();
+        showMessage("Saved progress loaded. Check your ID and role before final export.", "ok");
+      } catch (error) { showMessage(error.message || "Could not load the progress file.", "error"); }
+      $("loadDraft").value = "";
+    }
+    function exportFinal() {
+      const reviewerId = $("reviewerId").value.trim();
+      const reviewerRole = $("reviewerRole").value.trim();
+      if (!reviewerId || !reviewerRole) { showMessage("Enter reviewer ID and role before final export.", "error"); return; }
+      const missing = packet.filter(row => !complete(answers[row.scenario_id]));
+      if (missing.length) {
+        showMessage(`${missing.length} task(s) need an approve/reject decision and a reason. First: ${missing[0].scenario_id}.`, "error");
+        activeIndex = packet.findIndex(row => row.scenario_id === missing[0].scenario_id); render(); return;
+      }
+      const records = packet.map(row => ({scenario_id:row.scenario_id,scenario_sha256:row.scenario_sha256,reviewer_id:reviewerId,reviewer_role:reviewerRole,decision:answers[row.scenario_id].decision,recorded_at:answers[row.scenario_id].recorded_at,rationale:answers[row.scenario_id].rationale.trim()}));
+      download(filename("task_reviews", "jsonl"), records.map(record => JSON.stringify(record)).join("\n") + "\n", "application/x-ndjson");
+      showMessage(`Downloaded ${records.length} hash-bound review records. Send the file privately to the study owner.`, "ok");
+    }
+    $("datasetName").textContent = REVIEW_DATA.dataset_name;
+    $("datasetHash").textContent = REVIEW_DATA.dataset_sha256;
+    document.querySelectorAll('input[name="decision"]').forEach(input => input.addEventListener("change", updateAnswer));
+    $("rationale").addEventListener("input", updateAnswer);
+    $("search").addEventListener("input", renderList);
+    $("reviewerId").addEventListener("input", () => { dirty = true; });
+    $("reviewerRole").addEventListener("input", () => { dirty = true; });
+    $("previous").addEventListener("click", () => { activeIndex--; render(); });
+    $("next").addEventListener("click", () => { activeIndex++; render(); });
+    $("nextOpen").addEventListener("click", () => {
+      for (let step = 1; step <= packet.length; step++) {
+        const index = (activeIndex + step) % packet.length;
+        if (!complete(answers[packet[index].scenario_id])) { activeIndex = index; render(); return; }
+      }
+    });
+    $("saveDraft").addEventListener("click", saveDraft);
+    $("loadDraftButton").addEventListener("click", () => $("loadDraft").click());
+    $("loadDraft").addEventListener("change", event => loadDraft(event.target.files[0]));
+    $("exportFinal").addEventListener("click", exportFinal);
+    window.addEventListener("beforeunload", event => { if (dirty) { event.preventDefault(); event.returnValue = ""; } });
+    render();
+  </script>
+</body>
+</html>

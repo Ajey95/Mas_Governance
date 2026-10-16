@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from collections import Counter
 from typing import Callable
 
 from .models import GRAPH_OBSERVATION_TYPES, MetricResult, Scenario, Span, Trace
+from .propagation import PropagationAnalyzer
+from .parameter_validation import parameter_issues
 
 
 MetricCalculator = Callable[[Scenario, Trace], MetricResult]
@@ -100,21 +101,29 @@ class MetricEngine:
     def parameter_hallucination_rate(self, scenario: Scenario, trace: Trace) -> MetricResult:
         tool_spans = self._tool_spans(trace)
         invalid_spans: list[str] = []
+        assessed_spans: list[str] = []
+        issues_by_span: dict[str, dict[str, object]] = {}
         for span in tool_spans:
             schema = scenario.parameter_schema.get(span.tool or "", {})
-            allowed = set(schema.get("allowed_keys", []))
-            required = set(schema.get("required_keys", []))
-            actual = set(span.tool_parameters)
-            if (schema and ((actual - allowed) or (required - actual))) or span.metadata.get("parameter_hallucination"):
+            explicit = span.metadata.get("parameter_hallucination")
+            if not schema and type(explicit) is not bool:
+                continue
+            assessed_spans.append(span.span_id)
+            issues = parameter_issues(schema, span.tool_parameters)
+            if any(issues.values()) or explicit is True:
                 invalid_spans.append(span.span_id)
-        score = len(invalid_spans) / len(tool_spans) if tool_spans else 0.0
+                issues_by_span[span.span_id] = issues
+        score = len(invalid_spans) / len(assessed_spans) if assessed_spans else 0.0
         return self._result(
             "PHR",
             score,
-            "rate of tool calls with fabricated, missing, or unauthorized arguments",
-            details={"invalid_span_ids": invalid_spans, "tool_call_count": len(tool_spans)},
+            "rate of assessed tool calls with missing, extra, wrong-type, disallowed-value, or explicitly flagged arguments",
+            details={"invalid_span_ids": invalid_spans, "tool_call_count": len(tool_spans),
+                     "assessed_span_count": len(assessed_spans), "unassessed_span_ids": [
+                         span.span_id for span in tool_spans if span.span_id not in assessed_spans],
+                     "issues_by_span": issues_by_span},
             higher_is_better=False,
-            applicable=bool(tool_spans),
+            applicable=bool(assessed_spans),
         )
 
     def context_pollution_index(self, scenario: Scenario, trace: Trace) -> MetricResult:
@@ -123,48 +132,43 @@ class MetricEngine:
             for span in trace.spans
             if span.span_type in {"agent_step", "inter_agent_message", "memory_operation"}
         ]
+        assessed = [span for span in context_spans if type(span.metadata.get("context_polluted")) is bool]
+        assessed_ids = {span.span_id for span in assessed}
         polluted = [
             span
-            for span in context_spans
-            if span.metadata.get("context_polluted") and not span.metadata.get("sanitized")
+            for span in assessed
+            if span.metadata["context_polluted"] and span.metadata.get("sanitized") is not True
         ]
-        score = len(polluted) / len(context_spans) if context_spans else 0.0
+        score = len(polluted) / len(assessed) if assessed else 0.0
         return self._result(
             "CPI",
             score,
-            "share of context-bearing spans influenced by corrupted or unsafe context",
-            details={"polluted_span_ids": [span.span_id for span in polluted], "context_span_count": len(context_spans)},
+            "share of assessed context-bearing spans marked polluted and unsanitized",
+            details={"polluted_span_ids": [span.span_id for span in polluted], "context_span_count": len(context_spans),
+                     "assessed_span_count": len(assessed), "unassessed_span_ids": [
+                         span.span_id for span in context_spans if span.span_id not in assessed_ids]},
             higher_is_better=False,
-            applicable=bool(context_spans),
+            applicable=bool(assessed),
         )
 
     def cascading_failure_probability(self, scenario: Scenario, trace: Trace) -> MetricResult:
-        failures = [span for span in trace.spans if span.failure_label and span.span_type not in GRAPH_OBSERVATION_TYPES | {"guard_decision"}]
-        roots = [span for span in failures if not span.metadata.get("propagated_from")]
-        by_id = {span.span_id: span for span in trace.spans}
-        propagated_roots: list[str] = []
-        for root in roots:
-            for candidate in failures:
-                if candidate.span_id == root.span_id:
-                    continue
-                parent_id = candidate.parent_span_id
-                visited: set[str] = set()
-                while parent_id and parent_id not in visited:
-                    if parent_id == root.span_id:
-                        propagated_roots.append(root.span_id)
-                        break
-                    visited.add(parent_id)
-                    parent_id = by_id[parent_id].parent_span_id if parent_id in by_id else None
-                if root.span_id in propagated_roots:
-                    break
+        analysis = PropagationAnalyzer().analyze(trace)
+        roots = analysis.root_span_ids
+        propagated_roots = {path[0] for path in analysis.failure_paths}
         score = len(propagated_roots) / len(roots) if roots else 0.0
+        failure_count = len(roots) + len(analysis.propagated_span_ids)
+        dependency_evidence = bool(analysis.dependency_edges) or failure_count <= 1
         return self._result(
             "CFP",
             score,
-            "observed share of root failures with a downstream failure in this trace; not a population probability",
-            details={"root_failure_span_ids": [span.span_id for span in roots], "propagated_root_span_ids": propagated_roots},
+            "observed share of root failures with a downstream failure linked by declared dependencies; not a population probability or proof of causation",
+            details={"root_failure_span_ids": roots, "propagated_root_span_ids": sorted(propagated_roots),
+                     "failure_paths": analysis.failure_paths,
+                     "unlinked_propagation_span_ids": analysis.unlinked_propagation_span_ids,
+                     "declared_dependency_edge_count": len(analysis.dependency_edges),
+                     "failure_span_count": failure_count},
             higher_is_better=False,
-            applicable=bool(roots),
+            applicable=bool(roots) and dependency_evidence,
         )
 
     def role_scope_similarity(self, scenario: Scenario, trace: Trace) -> MetricResult:
@@ -189,23 +193,40 @@ class MetricEngine:
         )
 
     def conflict_contradiction_rate(self, scenario: Scenario, trace: Trace) -> MetricResult:
-        decisions = [
-            span.metadata.get("decision")
-            for span in trace.spans
-            if span.span_type == "agent_step" and span.metadata.get("decision")
-        ]
-        counts = Counter(decisions)
-        contradictory = sum(count for decision, count in counts.items() if decision in {"allow_sensitive_action", "deny_sensitive_action"})
-        score = 0.0
-        if counts.get("allow_sensitive_action") and counts.get("deny_sensitive_action"):
-            score = contradictory / max(1, len(decisions))
+        groups: dict[tuple[str, str], list[tuple[str, str]]] = {}
+        unscoped: list[str] = []
+        for span in trace.spans:
+            if span.span_type != "agent_step":
+                continue
+            decision = span.metadata.get("decision")
+            if decision in {"allow_sensitive_action", "deny_sensitive_action"}:
+                scope, revision = "sensitive_action", "0"
+                value = "allow" if decision == "allow_sensitive_action" else "deny"
+            else:
+                scope = span.metadata.get("decision_scope")
+                value = span.metadata.get("decision_value")
+                revision = span.metadata.get("decision_revision", "0")
+                if not isinstance(scope, str) or not scope or not isinstance(value, str) or not value:
+                    if decision:
+                        unscoped.append(span.span_id)
+                    continue
+            groups.setdefault((str(scope), str(revision)), []).append((span.span_id, str(value)))
+        comparable = [group for group in groups.values() if len(group) >= 2]
+        conflicting = [span_id for group in comparable if len({value for _, value in group}) > 1
+                       for span_id, _ in group]
+        denominator = sum(len(group) for group in comparable)
+        score = len(conflicting) / denominator if denominator else 0.0
         return self._result(
             "CCR",
             score,
-            "rate of incompatible decisions among collaborating agents",
-            details={"decisions": dict(counts)},
+            "share of comparable scoped decisions participating in a recorded disagreement; scope and revision are adapter assertions",
+            details={"comparable_decision_count": denominator, "conflicting_span_ids": conflicting,
+                     "unscoped_decision_span_ids": unscoped,
+                     "decision_groups": {f"{scope}@{revision}": [
+                         {"span_id": span_id, "value": value} for span_id, value in group]
+                         for (scope, revision), group in groups.items()}},
             higher_is_better=False,
-            applicable=len(decisions) >= 2,
+            applicable=bool(denominator),
         )
 
     def diagnosis_time(self, scenario: Scenario, trace: Trace) -> MetricResult:
