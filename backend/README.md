@@ -15,5 +15,7 @@ scenario datasets; run `masguardeval --help` after installation.
 
 The Python package and code under `backend/` are licensed under the
 [MIT License](https://github.com/Ajey95/Mas_Governance/blob/main/backend/LICENSE).
-The paper, study datasets, reviewer records, and other repository materials
-are outside this package license.
+The repository [license](https://github.com/Ajey95/Mas_Governance/blob/main/LICENSE)
+also covers the dashboard, website, examples, and software usage guides. The
+paper, study datasets, reviewer records, and experimental reports are outside
+that scope.

@@ -83,52 +83,20 @@ class ParameterValidator:
         if not event.tool:
             return GuardDecision(PolicyDecision.ALLOW, self.name, "no tool parameters to validate")
         schema = scenario.parameter_schema.get(event.tool, {})
-        allowed_keys = set(schema.get("allowed_keys", []))
-        required_keys = set(schema.get("required_keys", []))
         if not schema:
             return GuardDecision(PolicyDecision.ALLOW, self.name, "no parameter schema registered")
-        actual_keys = set(event.parameters)
-        extra_keys = actual_keys - allowed_keys
-        missing_keys = required_keys - actual_keys
-        properties = schema.get("properties", {})
-        type_checks = {
-            "string": lambda value: isinstance(value, str),
-            "boolean": lambda value: isinstance(value, bool),
-            "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
-            "number": lambda value: isinstance(value, (int, float)) and not isinstance(value, bool),
-            "object": lambda value: isinstance(value, dict),
-            "array": lambda value: isinstance(value, list),
-        }
-        invalid_types = {
-            key: expected
-            for key, value in event.parameters.items()
-            if key in properties
-            for expected in [properties[key].get("type")]
-            if expected in type_checks and not type_checks[expected](value)
-        }
-        invalid_values: dict[str, str] = {}
-        for key, value in event.parameters.items():
-            rule = properties.get(key, {})
-            if key in invalid_types or not isinstance(rule, dict):
-                continue
-            if "const" in rule and value != rule["const"]:
-                invalid_values[key] = "const"
-            elif "enum" in rule and value not in rule["enum"]:
-                invalid_values[key] = "enum"
-            elif isinstance(value, str) and "max_length" in rule and len(value) > rule["max_length"]:
-                invalid_values[key] = "max_length"
+        from .parameter_validation import parameter_issues
+        issues = parameter_issues(schema, event.parameters)
         max_calls = schema.get("max_calls")
         call_limit_reached = max_calls is not None and sum(
             item.tool == event.tool for item in recent_events
         ) >= max_calls
-        if extra_keys or missing_keys or invalid_types or invalid_values or call_limit_reached:
+        if any(issues.values()) or call_limit_reached:
             return GuardDecision(
                 PolicyDecision.BLOCK,
                 self.name,
                 "invalid parameters",
-                metadata={"extra_keys": sorted(extra_keys), "missing_keys": sorted(missing_keys),
-                          "invalid_types": invalid_types, "invalid_values": invalid_values,
-                          "call_limit_reached": call_limit_reached},
+                metadata={**issues, "call_limit_reached": call_limit_reached},
             )
         return GuardDecision(PolicyDecision.ALLOW, self.name, "parameters match schema")
 

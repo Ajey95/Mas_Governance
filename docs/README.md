@@ -1,6 +1,6 @@
 # MASGuardEval documentation
 
-MASGuardEval is a reference implementation for testing guard behavior in a mock software workspace. The default agent intentions are scripted; model-driven adapters have completed a local Ollama reference pilot. Seven reference cases and 35 synthetic candidate tasks exercise the runner and eight trace metrics. The current published package is **0.1.3**. The dashboard and reference report show mock execution and mark metrics N/A when no valid denominator exists; `run-agent` evaluates a caller-supplied adapter in guarded mode.
+MASGuardEval is a reference implementation for testing guard behavior in a mock software workspace. The default agent intentions are scripted; model-driven adapters have completed a local Ollama reference pilot. Seven reference cases and 35 synthetic candidate tasks exercise the runner and eight trace metrics. The current published package is **0.2.0**. The dashboard and reference report show mock execution and mark metrics N/A when no valid denominator exists. `run-agent` evaluates a caller adapter in guarded mode; `compare-agent` runs isolated baseline and guarded traces after explicit unguarded opt-in.
 
 These links track the maintained guides on `main`. A GitHub URL containing
 `/blob/v0.1.0/` or another version tag is a snapshot of that release and does
@@ -21,6 +21,7 @@ not gain features added in later versions.
 | Assess paper readiness | [Research status](RESEARCH_STATUS.md) |
 | Run an independent study | [Paper study protocol](PAPER_STUDY_PROTOCOL.md) |
 | Author the study task set | [Study authoring guide](STUDY_AUTHORING_GUIDE.md) |
+| Collect offline, hash-bound task reviews | [Offline task review form](TASK_REVIEW_FORM.md) |
 | Check novelty claims against nearby work | [Related-work audit](RELATED_WORK_AUDIT.md) |
 
 The included synthetic annotation pairs demonstrate the agreement calculation only. See [research status](RESEARCH_STATUS.md) for independent data and validation required for a paper.

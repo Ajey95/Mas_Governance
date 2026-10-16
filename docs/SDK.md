@@ -1,7 +1,7 @@
 # Python SDK
 
 Use MASGuardEval as a Python framework inside tests, notebooks, CI jobs, or another agent system.
-The supported 0.1.x surface and installed command are in the [package contract](SDK_PUBLIC_API.md).
+The supported 0.2.x surface and installed command are in the [package contract](SDK_PUBLIC_API.md).
 Runnable fictional integrations for custom agents, LangChain, LangGraph,
 AutoGen, and CrewAI are in the [examples](../examples/README.md).
 
@@ -10,7 +10,7 @@ AutoGen, and CrewAI are in the [examples](../examples/README.md).
 For another codebase, install the published package:
 
 ```powershell
-python -m pip install "masguardeval==0.1.3"
+python -m pip install "masguardeval==0.2.0"
 ```
 
 For development from a repository checkout, use:
@@ -23,6 +23,8 @@ python -m pip install -e backend
 The package contains the SDK and CLI. The fictional datasets and example
 factories shown below live in the Git repository and are not bundled in the
 wheel.
+The installed command includes guarded custom-agent runs, paired comparisons,
+detailed trace reports, and the optional timed diagnosis study workflow.
 
 ## Run Your Agent from the CLI
 
@@ -30,6 +32,8 @@ From the repository root, try the trusted fictional factory:
 
 ```powershell
 masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out reports/my-agent.json --sqlite reports/runs.sqlite3
+masguardeval compare-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --allow-unguarded --out reports/my-comparison.json --sqlite reports/runs.sqlite3
+masguardeval trace-report --input reports/my-agent.json --json-out reports/my-agent-report.json --md-out reports/my-agent-report.md
 ```
 
 Your `path.py:create_engine` function receives the loaded `GoldenDataset` and
@@ -39,6 +43,29 @@ metric applicability and scores, observed graph, and recommendations. It does
 not discover agent tools automatically. The factory is executable Python, so
 only load code you trust. See the [CLI contract](SDK_PUBLIC_API.md) and
 [fictional factory](../examples/cli_agent_factory.py) for the exact pattern.
+
+`compare-agent` calls the factory twice and requires a fresh engine and adapter
+for each condition. It records both traces, graphs, metric applicability, and
+findings in one JSON file. `--allow-unguarded` explicitly opts into a baseline
+that skips guards; use isolated test handlers and reset any external state the
+handlers own. The CLI does not establish matched model sampling or task success.
+For detailed per-condition evidence, run `trace-report --input
+reports/my-comparison.json --mode baseline` or `--mode guarded` with a JSON or
+Markdown output path.
+
+The `trace-report` command produces a detailed single-run provenance,
+evaluation, and observability report from the saved output. It recomputes the
+metrics and findings from spans, includes evidence IDs and graph dependency
+paths, and records scenario/trace hashes. For a run saved only in SQLite, use
+the saved trace ID:
+
+```powershell
+masguardeval trace-report --trace-id TRACE_ID --sqlite reports/runs.sqlite3 --json-out reports/my-agent-report.json --md-out reports/my-agent-report.md
+```
+
+The JSON contains raw trace data, so inspect it before sharing. The report
+does not establish independent human validation, a matched baseline, or causal
+root cause. See the [CLI contract](SDK_PUBLIC_API.md) for the exact options.
 
 ## Evaluate One Scenario
 
@@ -169,6 +196,56 @@ metrics = engine.compute_metrics(scenario, trace)
 `run_guarded()` is the safe default for a real handler. Use `evaluate()` only
 when both its guarded and unguarded baseline runs execute against isolated test
 tools.
+
+### Record a candidate failure dependency
+
+Use a unique `ExecutionEvent.action` for each event. When a later event actually
+uses an earlier event's output, set `metadata={"caused_by": earlier_action}`.
+The runner resolves the reference to a source span ID and records it as
+`causal_parent_span_id`. Missing or repeated action names remain unlinked;
+ordinary span nesting does not raise CFP. The link declares an observed
+dependency for review, not proven causation.
+
+For a native `FrameworkSession`, `agent_step()` and `message()` return action
+tokens that can be passed as `caused_by`. `call()` accepts `caused_by` and an
+optional unique `action_id` when a later event must cite that tool result:
+
+```python
+plan = session.agent_step("Planner", "plan", output="inspect the fixture")
+handoff = session.message("Planner", "Executor", "use this plan", caused_by=plan)
+result = session.call("my_tool", {"query": "example"}, agent="Executor",
+                      caused_by=handoff, action_id="my-tool-call-1")
+session.agent_step("Reviewer", "review", output=result, caused_by="my-tool-call-1")
+```
+
+Native framework wrappers do not infer information flow inside uninstrumented
+nodes. Record these links explicitly when testing failure propagation; otherwise
+the trace and policy decisions remain useful, while CFP cannot attribute a
+downstream failure to an earlier one.
+
+### Supply comparable metric evidence
+
+PHR checks recorded tool arguments against the scenario's parameter schema,
+including required/extra keys, types, `const`, `enum`, and maximum string
+length. Calls without a schema or explicit bad-parameter assessment are
+reported as unassessed rather than clean.
+
+CPI needs an explicit Boolean `context_polluted` assessment on each context
+span being counted; `sanitized: true` records removal of a known polluted
+context. `FrameworkSession.agent_step(..., metadata=...)` and
+`message(..., metadata=...)` accept those fields. Do not label unknown context
+as clean merely to obtain a score.
+
+CCR compares `agent_step` spans only when adapters record the same
+`decision_scope` and `decision_revision` with a `decision_value` for each
+agent. The scope must name one concrete proposition and the revision must
+identify the same state snapshot. Different revisions are not treated as a
+contradiction. Unscoped model text remains unassessed. These annotations are
+observations made by the adapter, not independent expert labels.
+
+For actual human diagnosis duration, use the separate
+[timed study protocol](PAPER_STUDY_PROTOCOL.md#timed-human-diagnosis). Runtime
+DT remains a span-position proxy.
 
 ## Add a Custom Guard
 

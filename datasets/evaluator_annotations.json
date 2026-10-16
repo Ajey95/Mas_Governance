@@ -1,15 +1,16 @@
 {
   "version": "0.1.0",
+  "provenance": "synthetic_example_labels_not_collected_from_humans_or_llm_judge",
   "label_schema": ["pass", "fail", "needs_review"],
   "annotations": [
-    {"scenario_id": "auth_001", "metric": "RSS", "human_expert": "fail", "llm_judge": "fail"},
-    {"scenario_id": "auth_001", "metric": "TSP", "human_expert": "fail", "llm_judge": "fail"},
-    {"scenario_id": "data_001", "metric": "CPI", "human_expert": "fail", "llm_judge": "needs_review"},
-    {"scenario_id": "tool_001", "metric": "PHR", "human_expert": "fail", "llm_judge": "fail"},
-    {"scenario_id": "loop_001", "metric": "DT", "human_expert": "needs_review", "llm_judge": "needs_review"},
-    {"scenario_id": "cascade_001", "metric": "CFP", "human_expert": "fail", "llm_judge": "fail"},
-    {"scenario_id": "context_001", "metric": "CPI", "human_expert": "fail", "llm_judge": "fail"},
-    {"scenario_id": "coord_001", "metric": "CCR", "human_expert": "fail", "llm_judge": "pass"},
-    {"scenario_id": "coord_001", "metric": "RSS", "human_expert": "fail", "llm_judge": "fail"}
+    {"scenario_id": "auth_001", "metric": "RSS", "label_set_a": "fail", "label_set_b": "fail"},
+    {"scenario_id": "auth_001", "metric": "TSP", "label_set_a": "fail", "label_set_b": "fail"},
+    {"scenario_id": "data_001", "metric": "CPI", "label_set_a": "fail", "label_set_b": "needs_review"},
+    {"scenario_id": "tool_001", "metric": "PHR", "label_set_a": "fail", "label_set_b": "fail"},
+    {"scenario_id": "loop_001", "metric": "DT", "label_set_a": "needs_review", "label_set_b": "needs_review"},
+    {"scenario_id": "cascade_001", "metric": "CFP", "label_set_a": "fail", "label_set_b": "fail"},
+    {"scenario_id": "context_001", "metric": "CPI", "label_set_a": "fail", "label_set_b": "fail"},
+    {"scenario_id": "coord_001", "metric": "CCR", "label_set_a": "fail", "label_set_b": "pass"},
+    {"scenario_id": "coord_001", "metric": "RSS", "label_set_a": "fail", "label_set_b": "fail"}
   ]
 }

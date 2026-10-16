@@ -78,7 +78,14 @@ export interface AgentToolGraph {
   trace_id: string;
   nodes: GraphNode[];
   edges: GraphEdge[];
-  span_propagation: { root_span_ids: string[]; propagated_span_ids: string[]; [key: string]: unknown };
+  span_propagation: {
+    root_span_ids: string[];
+    propagated_span_ids: string[];
+    dependency_edges?: { source: string; target: string }[];
+    failure_paths?: string[][];
+    unlinked_propagation_span_ids?: string[];
+    [key: string]: unknown;
+  };
 }
 export interface RunSummary { trace_id: string; scenario_id: string; mode: "baseline" | "guarded"; started_at: string; completed_at: string | null; adapter: string; blocked: boolean }
 export interface Finding { kind: string; severity: "high" | "medium" | "info"; title: string; detail: string; evidence_span_ids: string[]; next_action: string }

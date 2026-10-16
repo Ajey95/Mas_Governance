@@ -1,6 +1,7 @@
 import type { AgentToolGraph, ApprovalRequest, DashboardPayload, FindingsReport, RunSummary, Trace } from "./types";
 
-export const apiBase = import.meta.env.VITE_API_BASE ?? (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
+// Built workbenches serve their API from the same origin; developer overrides apply only to Vite dev mode.
+export const apiBase = import.meta.env.DEV ? (import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000") : "";
 
 export async function fetchDashboard(): Promise<DashboardPayload> {
   const response = await fetch(`${apiBase}/dashboard`);

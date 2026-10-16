@@ -1,8 +1,11 @@
 # MASGuardEval
 
-The Python package and code under [`backend/`](backend/) are available under
-the [MIT License](backend/LICENSE). This license does not cover the paper,
-study datasets, reviewer records, or other files outside `backend/`.
+The software source, examples, website, dashboard, and usage guides are
+available under the [MIT License](LICENSE). The paper, study datasets,
+reviewer records, and experimental reports are outside that license.
+
+See the [0.2.0 changes](CHANGELOG.md) and [contribution guide](CONTRIBUTING.md)
+for release scope and local development checks.
 
 MASGuardEval is a research **reference implementation** for tracing and testing guard decisions in a software workspace assistant. Seven reference scenarios cover unauthorized access, disclosure, unsafe tools, loops, propagation, polluted context, and conflicting agents. A separate set of 35 synthetic candidate tasks supports pilot experiments.
 
@@ -21,13 +24,15 @@ release and remain available as historical snapshots.
 | Baseline and guarded runner | Implemented; a block stops later events |
 | Mock workspace tools | Implemented; isolated state per run |
 | Eight trace metrics | Implemented with applicability flags and evidence counts |
-| Guard ablations, causal span graph, agent–tool graph | Implemented for observed traces |
+| Timed human diagnosis study | Blinded four-panel packet assignment, monotonic answer timing, independent reference template, and correctness-aware comparison implemented; genuine analyst records pending |
+| Guard ablations, structural and candidate causal span graphs, agent–tool graph | Implemented for observed traces; candidate paths follow declared dependencies, not nesting alone |
 | RBAC, ABAC, high-risk approval | Implemented and tested in mock execution |
 | API, SQLite spans, SSE stream, JSON/Markdown reports, responsive dashboard | Implemented; dashboard includes a live event log and per-trace findings report |
 | Model-driven single-agent and three-agent adapters | Implemented with mocked-client tests and one local Ollama reference pilot; no paper-grade trial |
 | Study review and analysis | Task freeze gate, two-reviewer outcome packets, adjudication, a secondary three-provider model council, held-out metric checks, and matched internal guard profiles implemented; one three-provider council service smoke passed; independent human data pending |
 | LangChain, LangGraph, AutoGen, CrewAI | Native guarded tool wrappers implemented and exercised against installed framework packages; bounded nested LangGraph probes cover repeated reason–act cycles, two subgraphs, conditional routing, guard blocks, and trace capture. Model-driven LangGraph paths include a ReAct subgraph and a nested Planner–Executor–Reviewer review loop. |
 | Installable SDK and CLI | Python wheel and source archive build; the installed `masguardeval` command and all five fictional integration examples passed in a fresh Python environment |
+| Custom-agent paired CLI | `compare-agent` runs fresh baseline and guarded adapter instances against separate mock workspaces, returning both traces, graphs, findings, and metric changes; an explicit unguarded opt-in is required |
 | PostgreSQL, pgvector, LangSmith | Supabase PostgreSQL, pgvector, owner-scoped traces, and deployed checkpoint routes verified in the earlier private preview; fictional LangSmith export and remote readback verified |
 | Independent labels, held-out validity study | Not supplied by this repository |
 
@@ -50,6 +55,27 @@ external credentials.
 The `run-agent` command loads a caller-owned Python factory and executes one
 guarded scenario with its adapter and registered tools. It writes a trace,
 metrics, and observed graph; it does not infer or intercept unwrapped tools.
+`trace-report` turns that saved JSON or a SQLite/PostgreSQL trace ID into a
+single-run provenance, evaluation, and observability report with span evidence:
+
+```powershell
+masguardeval trace-report --input agent-run.json --json-out trace-report.json --md-out trace-report.md
+```
+
+For a descriptive paired comparison using **isolated test handlers only**:
+
+```powershell
+masguardeval compare-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --allow-unguarded --out comparison.json --sqlite runs.sqlite3
+masguardeval trace-report --input comparison.json --mode baseline --json-out baseline-detail.json
+masguardeval trace-report --input comparison.json --mode guarded --json-out guarded-detail.json
+```
+
+The baseline intentionally skips guards. The two runs use fresh adapter and
+mock-workspace instances; callers must isolate any external state used by
+their handlers. The observed metric change is not a judged safety outcome.
+
+The report recomputes metrics and findings from the trace. It does not infer
+independent task success, a paired baseline, or proven causal root cause.
 
 The public Render URL is intended for the official landing page, docs, tutorials, and examples. It does not host the evaluation API or user traces. The earlier [Render and Supabase private-preview verification](docs/DEPLOY_RENDER_SUPABASE.md) remains historical evidence of those integrations, not the current product architecture.
 

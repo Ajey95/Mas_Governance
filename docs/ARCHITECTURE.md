@@ -12,7 +12,7 @@ scenario -> baseline run -> guarded run -> traces -> metrics -> comparison -> re
 
 ```mermaid
 flowchart LR
-    A[Golden Dataset<br/>risk scenarios] --> B[Evaluation Engine]
+    A[Scenario Dataset<br/>reference or reviewed tasks] --> B[Evaluation Engine]
     X[External Agent Systems<br/>LangChain / LangGraph / AutoGen / CrewAI / Custom Python] --> C[Native tools or AgentSystemAdapter]
     C --> B
 
@@ -33,7 +33,7 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant Dataset as Golden Dataset
+    participant Dataset as Scenario Dataset
     participant Engine as Evaluation Engine
     participant Base as Baseline Agent
     participant Guarded as Guarded Agent
@@ -62,7 +62,7 @@ sequenceDiagram
 | Metrics | `backend/masguardeval/metrics.py` | Compute formula-based safety scores. |
 | Evaluator agreement | `backend/masguardeval/evaluator.py` | Compute Cohen's Kappa and confusion tables for label validation. |
 | Experiment suite | `backend/masguardeval/experiments.py` | Produce scenario tables, metric summaries, and guard ablations. |
-| Propagation analyzer | `backend/masguardeval/propagation.py` | Build rooted failure-propagation paths from trace spans. |
+| Propagation analyzer | `backend/masguardeval/propagation.py` | Separate structural span ancestry from declared dependency paths between failure spans. |
 | Agent–tool graph | `backend/masguardeval/graph.py` | Build observed agent/tool nodes and typed message, call, block, and approval edges with span references. |
 | Trace store | `backend/masguardeval/store.py` | Persist runs and spans in SQLite or PostgreSQL JSONB, including interrupted runs. |
 | Native framework tools | `backend/masguardeval/frameworks.py` | Route LangChain, LangGraph, AutoGen, and CrewAI tool calls through one guarded evaluation session. |
@@ -77,7 +77,7 @@ sequenceDiagram
 
 ## Execution Lifecycle
 
-1. Load a scenario from the golden dataset.
+1. Load a scenario from the selected scenario dataset. The seven bundled cases are reference fixtures, not an independently validated golden benchmark.
 2. Run the baseline adapter plan without mitigation guards.
 3. Run the guarded adapter plan with guard middleware.
 4. Record every operation as a span.
@@ -136,7 +136,7 @@ Built-in guards:
 | Use LangChain, LangGraph, AutoGen, or CrewAI | Use the native wrappers in `frameworks.py` and a `FrameworkSession`. |
 | Use another framework | Implement `AgentSystemAdapter.plan()` or call `FrameworkSession` from tool hooks. |
 | Add organization-specific policy | Implement a custom guard. |
-| Add domain-specific scenarios | Add a golden dataset JSON file. |
+| Add domain-specific scenarios | Add a validated scenario JSON file; keep synthetic and human-reviewed provenance distinct. |
 | Add metrics | Extend `MetricEngine.compute()`. |
 | Build another dashboard | Consume `GET /dashboard` or `engine.generate_dashboard()`. |
 
@@ -161,25 +161,28 @@ For larger deployments:
 
 ## Failure Propagation Formalism
 
-`PropagationAnalyzer` models a trace as a directed graph:
+`PropagationAnalyzer` exposes two directed span graphs:
 
 ```text
-G = (V, E)
-V = spans
-E = parent_span_id edges plus explicit propagated_from edges
+V = recorded spans
+E_structural = parent_span_id links (nesting and execution provenance)
+E_dependency = resolved caused_by / causal_parent_span_id links (declared influence)
 ```
 
-Root failures are spans with a failure label that are not themselves propagated. Propagated failures are spans with `metadata.propagated_from` or the `cascading_failure` label.
+Root failures are failure-labelled spans without an earlier failure reachable through declared dependency links. A failure with a linked earlier failure is a candidate propagated failure. `propagated_from` is an annotation, not an edge by itself; an annotated failure without a supported path is returned as unlinked. Parent links remain available for inspection but do not raise CFP alone.
 
 The analyzer returns:
 
 - root span IDs
 - propagated span IDs
-- directed edges
-- rooted paths
+- structural parent edges and paths
+- declared dependency edges and failure-to-failure paths
+- unlinked propagation annotations
 - longest path length
 - impact score
 
 ```text
-impact_score = count(propagated spans) / count(all spans)
+impact_score = count(failures with a linked earlier failure) / count(all spans)
 ```
+
+The graph records candidate dependencies supplied by instrumented adapters. It does not prove counterfactual causation; compare source events, tool effects, and independent reviewer judgments before attributing responsibility.

@@ -48,6 +48,18 @@ This command runs guarded only and records trace spans, metrics, and the
 observed graph. It does not automatically discover tools or intercept an agent
 whose actions bypass the registered handlers.
 
+To compare fresh baseline and guarded runs of the same trusted factory, use
+`compare-agent` with isolated test handlers. Its baseline intentionally has no
+guards, so the explicit flag is required:
+
+```powershell
+masguardeval compare-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --allow-unguarded --out reports/comparison.json --sqlite reports/runs.sqlite3
+masguardeval trace-report --input reports/comparison.json --mode guarded --json-out reports/guarded-detail.json --md-out reports/guarded-detail.md
+```
+
+The comparison includes both traces, graphs, findings, and applicable metric
+changes. These are observed trace differences, not independent task outcomes.
+
 ```powershell
 python scripts/start_local_dashboard.py
 ```

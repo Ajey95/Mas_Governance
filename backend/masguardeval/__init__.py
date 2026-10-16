@@ -5,7 +5,7 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("masguardeval")
 except PackageNotFoundError:
-    __version__ = "0.1.3"
+    __version__ = "0.2.0"
 
 from .dataset import GoldenDataset
 from .guards import (

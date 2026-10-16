@@ -55,7 +55,7 @@ Response:
 
 ### `GET /scenarios`
 
-Return the loaded golden dataset.
+Return the selected scenario dataset. The bundled default contains seven reference fixtures, not a validated golden benchmark.
 
 ```powershell
 curl http://127.0.0.1:8000/scenarios
@@ -173,7 +173,7 @@ Return a formal failure-propagation graph for a scenario baseline trace.
 curl http://127.0.0.1:8000/propagation/cascade_001
 ```
 
-Response includes root span IDs, propagated span IDs, directed edges, paths, longest path length, and impact score.
+Response includes root and propagated span IDs, structural parent edges and paths, declared dependency edges and failure paths, unlinked propagation annotations, longest structural path length, and impact score. A dependency path is trace evidence for a candidate explanation, not proof of cause.
 
 ### `GET /scalability/batch`
 

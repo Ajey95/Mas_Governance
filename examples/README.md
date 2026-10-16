@@ -11,6 +11,7 @@ Install the package from the repository root:
 python -m pip install ./backend
 python examples/custom_agent.py
 masguardeval run-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --out reports/my-agent.json
+masguardeval compare-agent --dataset examples/fictional_scenarios.json --scenario fictional_tool_boundary --factory examples/cli_agent_factory.py:create_engine --allow-unguarded --out reports/my-comparison.json
 python -m pip install './backend[langchain,langgraph,autogen,crewai]'
 python examples/langchain_agent.py
 python examples/langgraph_agent.py
@@ -19,6 +20,9 @@ python examples/crewai_agent.py
 ```
 
 The custom example passes `ExecutionEvent` intents into `EvaluationEngine`.
+The paired command calls the factory twice to obtain fresh adapter instances;
+its baseline deliberately skips guards. Use only isolated test handlers and
+separate any caller-owned external state across conditions.
 Each framework example constructs that framework's native tool type from a
 `FrameworkSession`. The LangGraph example compiles and runs a graph with a
 guarded tool node. The other examples invoke native tools directly to check
