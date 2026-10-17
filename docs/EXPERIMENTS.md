@@ -12,7 +12,7 @@ python scripts/run_scalability_batch.py --max-workers 2 --chunk-size 3
 python scripts/run_evaluator_validation.py
 ```
 
-These commands write files under `reports/`. They run scripted intents in a fresh mock workspace, not live LLM agents. The experiment report contains per-scenario RSS where applicable, aggregate metrics with sample counts, and guard ablations: no guards, RBAC only, full stack, and one-guard-removed variants. A blocked run stops before later scripted steps. Ablation figures are descriptive for these seven scenarios.
+These commands write files under `reports/`. They run scripted intents in a fresh mock workspace, not live LLM agents. The experiment report contains per-scenario RSS where applicable, aggregate metrics with sample counts, and guard ablations: no guards, RBAC only, full stack, and one-guard-removed variants. DT has no directional delta because its position is only descriptive within one trace. A blocked run stops before later scripted steps. Ablation figures are descriptive for these seven scenarios.
 
 `run_evaluator_validation.py` demonstrates Cohen's kappa using `datasets/evaluator_annotations.json`. Those nine label pairs are **synthetic example labels**. The output includes `provenance` and must not be presented as human-versus-LLM agreement.
 

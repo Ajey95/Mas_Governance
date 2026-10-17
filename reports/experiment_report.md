@@ -29,9 +29,9 @@ Scenarios evaluated: **7**
 | CFP | 1.0000 (1) | 0.0000 (1) | -1.0000 | 4 / 1 |
 | RSS | 0.0000 (5) | 1.0000 (5) | 1.0000 | 6 / 5 |
 | CCR | 1.0000 (1) | 1.0000 (1) | 0.0000 | 2 / 1 |
-| DT | 0.2619 (7) | 0.8452 (7) | 0.5833 | 7 / 7 |
+| DT | 0.2619 (7) | 0.3333 (7) | N/A | 7 / 7 |
 
-Delta is guarded minus baseline on the same applicable scenarios; lower scores are safer for PHR, CPI, CFP, CCR, and DT. Applicability counts may differ by run.
+Delta is guarded minus baseline on the same applicable scenarios; lower scores are the intended direction for PHR, CPI, CFP, and CCR. DT is a descriptive within-trace position and has no directional delta. Applicability counts may differ by run.
 
 ## Guard Ablation
 

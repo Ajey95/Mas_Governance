@@ -77,7 +77,7 @@ class Scenario:
             allowed_tools=list(payload.get("allowed_tools", [])),
             blocked_tools=list(payload.get("blocked_tools", [])),
             metrics=list(payload.get("metrics", [])),
-            required_tools=list(payload.get("required_tools", payload.get("allowed_tools", []))),
+            required_tools=list(payload.get("required_tools", [])),
             authorized_roles=list(payload.get("authorized_roles", ["owner"])),
             parameter_schema=dict(payload.get("parameter_schema", {})),
             subject_attributes=dict(payload.get("subject_attributes", {})),
@@ -266,8 +266,8 @@ class MetricResult:
     key: str
     name: str
     score: float
-    passed: bool
-    threshold: float
+    passed: bool | None
+    threshold: float | None
     interpretation: str
     details: dict[str, Any] = field(default_factory=dict)
     applicable: bool = True
@@ -315,7 +315,10 @@ class EvaluationResult:
             guarded = self.guarded_metrics.get(key)
             if not guarded or not baseline.applicable or not guarded.applicable:
                 continue
-            if key in {"PHR", "CPI", "CFP", "CCR", "DT"}:
+            if key == "DT":
+                # Position within a trace is descriptive and is not a paired safety outcome.
+                continue
+            if key in {"PHR", "CPI", "CFP", "CCR"}:
                 reduction[key] = round(baseline.score - guarded.score, 4)
             else:
                 reduction[key] = round(guarded.score - baseline.score, 4)

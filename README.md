@@ -4,7 +4,7 @@ The software source, examples, website, dashboard, and usage guides are
 available under the [MIT License](LICENSE). The paper, study datasets,
 reviewer records, and experimental reports are outside that license.
 
-See the [0.2.0 changes](CHANGELOG.md) and [contribution guide](CONTRIBUTING.md)
+See the [0.2.1 changes](CHANGELOG.md) and [contribution guide](CONTRIBUTING.md)
 for release scope and local development checks.
 
 MASGuardEval is a research **reference implementation** for tracing and testing guard decisions in a software workspace assistant. Seven reference scenarios cover unauthorized access, disclosure, unsafe tools, loops, propagation, polluted context, and conflicting agents. A separate set of 35 synthetic candidate tasks supports pilot experiments.
@@ -23,7 +23,7 @@ release and remain available as historical snapshots.
 | Dataset and validation | Seven reference cases plus 35 synthetic, unadjudicated candidate tasks |
 | Baseline and guarded runner | Implemented; a block stops later events |
 | Mock workspace tools | Implemented; isolated state per run |
-| Eight trace metrics | Implemented with applicability flags and evidence counts |
+| Eight trace measures | Seven secondary operational measures and one descriptive first-signal position (DT), with applicability flags and evidence counts |
 | Timed human diagnosis study | Blinded four-panel packet assignment, monotonic answer timing, independent reference template, and correctness-aware comparison implemented; genuine analyst records pending |
 | Guard ablations, structural and candidate causal span graphs, agent–tool graph | Implemented for observed traces; candidate paths follow declared dependencies, not nesting alone |
 | RBAC, ABAC, high-risk approval | Implemented and tested in mock execution |
@@ -86,7 +86,7 @@ The public Render URL is intended for the official landing page, docs, tutorials
 - `reports/latest_evaluation.json`: dashboard payload produced by `run_evaluation.py`.
 - `reports/evaluator_agreement.json`: demonstration of Cohen's kappa on **synthetic example labels**, not collected human or judge annotations.
 
-Metric formulas, denominator rules, and limitations are in [Metrics](docs/METRICS.md). `CFP` is retained as an API key but means **observed cascading failure rate**, not an estimated probability. `DT` is a **diagnosis depth proxy**, not measured diagnosis time. An inapplicable metric is marked `applicable: false` and shown as N/A.
+Metric formulas, denominator rules, and limitations are in [Metrics](docs/METRICS.md). `CFP` is retained as an API key but means **observed cascading failure rate**, not an estimated probability. `DT` is a descriptive **diagnosis depth proxy**, excluded from directional safety comparisons and distinct from measured analyst time. An inapplicable metric is marked `applicable: false` and shown as N/A.
 
 ## Extend the runner
 

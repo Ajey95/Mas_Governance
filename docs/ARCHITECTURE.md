@@ -59,7 +59,7 @@ sequenceDiagram
 | Models | `backend/masguardeval/models.py` | Define scenarios, events, spans, traces, and results. |
 | Adapter | `backend/masguardeval/adapters.py` | Convert agent-system behavior into events. |
 | Guards | `backend/masguardeval/guards.py` | Intercept risky events before execution. |
-| Metrics | `backend/masguardeval/metrics.py` | Compute formula-based safety scores. |
+| Metrics | `backend/masguardeval/metrics.py` | Compute seven operational trace measures and descriptive first-signal position with applicability and evidence coverage. |
 | Evaluator agreement | `backend/masguardeval/evaluator.py` | Compute Cohen's Kappa and confusion tables for label validation. |
 | Experiment suite | `backend/masguardeval/experiments.py` | Produce scenario tables, metric summaries, and guard ablations. |
 | Propagation analyzer | `backend/masguardeval/propagation.py` | Separate structural span ancestry from declared dependency paths between failure spans. |

@@ -66,7 +66,7 @@ def require_approval_auth(authorization: str | None) -> None:
 
 app = FastAPI(
     title="MASGuardEval API",
-    version="0.2.0",
+    version="0.2.1",
     description="Reference evaluation and observability framework. Built-in scenarios use scripted intents and an isolated mock workspace, not live LLM agents.",
 )
 

@@ -36,7 +36,7 @@ unlinked. Parent-span nesting alone is not a CFP dependency edge.
 caller-owned input or an explicit trace source; the package does not ship the
 research dataset.
 
-The installed 0.2.0 command includes the detailed report, paired custom-agent
+The installed 0.2.1 command includes the detailed report, paired custom-agent
 comparison, and timed diagnosis workflow shown below.
 
 ```powershell
@@ -78,7 +78,8 @@ mock workspace. `--allow-unguarded` is required because the baseline skips
 guards; use only isolated test handlers. A caller-owned model, external store,
 or service may still have shared state, so the caller must reset or isolate it.
 The output has baseline/guarded traces, metrics, graphs, findings, and a
-directional metric change only where both scores apply. This is a descriptive
+directional metric change only where both operational scores apply. DT is
+excluded because its first-signal position is descriptive within one trace. This is a descriptive
 trace comparison, not independently judged safety or task success.
 
 `trace-report` reads one `run-agent` JSON file with `--input`, a chosen
@@ -134,8 +135,8 @@ The paper, study datasets, reviewer records, and experimental reports are
 outside that scope. A successful wheel build
 does not establish empirical metric validity or paper readiness.
 
-The current [PyPI release is 0.2.0](https://pypi.org/project/masguardeval/0.2.0/),
-published from tag `v0.2.0` through GitHub's trusted-publisher workflow.
+The current [PyPI release is 0.2.1](https://pypi.org/project/masguardeval/0.2.1/),
+published from tag `v0.2.1` through GitHub's trusted-publisher workflow.
 The local FastAPI Swagger UI remains
 at `/docs`; the public site does not expose evaluation APIs. Earlier versioned
 guides remain historical snapshots; use the guides on `main` for the current

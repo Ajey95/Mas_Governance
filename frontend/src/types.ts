@@ -53,9 +53,9 @@ export interface MetricResult {
   key: MetricKey;
   name: string;
   score: number;
-  passed: boolean;
+  passed: boolean | null;
   applicable: boolean;
-  threshold: number;
+  threshold: number | null;
   interpretation: string;
   details: Record<string, unknown>;
 }
