@@ -121,6 +121,8 @@ def _metric_scores(report: dict[str, Any], by_trace: dict[str, dict[str, Any]], 
     groups: dict[str, list[tuple[float, bool]]] = defaultdict(list)
     for trace_id, metrics in _run_metrics(report, protocol_valid_only=True).items():
         for key, value in metrics.items():
+            if key == "DT":
+                continue  # First-signal position has no prespecified direction as a task-risk predictor.
             if value.get("applicable") and value.get("score") is not None:
                 score = float(value["score"])
                 groups[key].append((score if key in LOWER_IS_BETTER else 1 - score, by_trace[trace_id][outcome]))

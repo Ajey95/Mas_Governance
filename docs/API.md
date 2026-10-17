@@ -96,9 +96,14 @@ Response includes:
 | `guarded_trace` | Guarded execution trace. |
 | `baseline_metrics` | Metric results for baseline run. |
 | `guarded_metrics` | Metric results for guarded run. |
-| `risk_reduction` | Per-metric deltas where both runs are applicable. |
+| `risk_reduction` | Descriptive directional deltas for applicable operational measures; DT is excluded. |
 | `recommendations` | Guard suggestions. |
 | `baseline_graph`, `guarded_graph` | Observed agent–tool graph with edges linked to trace spans. |
+
+Metric `threshold` and `passed` are exploratory reference-rule fields. They are
+`null` for descriptive DT. A missing denominator sets `applicable: false`,
+and the score must then be displayed as N/A. The `details.threshold_status`
+field distinguishes an exploratory rule from no threshold.
 
 ### Graph, stream, and durable run endpoints
 

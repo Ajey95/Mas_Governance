@@ -9,7 +9,7 @@ from statistics import mean, stdev
 from typing import Any
 
 
-LOWER_IS_BETTER = {"PHR", "CPI", "CFP", "CCR", "DT"}
+LOWER_IS_BETTER = {"PHR", "CPI", "CFP", "CCR"}
 
 
 def summarize_trials(results: list[dict[str, Any]], *, seed: int = 23, bootstrap_samples: int = 2000) -> dict[str, Any]:
@@ -19,6 +19,8 @@ def summarize_trials(results: list[dict[str, Any]], *, seed: int = 23, bootstrap
         architecture = str(result["architecture"])
         scenario_id = str(result["scenario"]["scenario_id"])
         for key, baseline in result["baseline_metrics"].items():
+            if key == "DT":
+                continue  # Trace-relative position is not a matched outcome.
             guarded = result["guarded_metrics"].get(key)
             if not guarded or not baseline["applicable"] or not guarded["applicable"]:
                 continue

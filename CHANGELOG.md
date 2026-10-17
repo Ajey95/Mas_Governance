@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-10-17
+
+- Correct TSR so optional allowed tools are not silently treated as required when `required_tools` is omitted.
+- Require a resolved dependency or explicit negative assessment for each later failure before reporting an applicable CFP score. Unrelated dependency edges no longer produce a misleading zero.
+- Exclude routine guard checks from DT's first-signal position. DT is now descriptive only: it has no threshold, pass/fail, paired improvement, or task-risk threshold tuning. Actual analyst time remains a separate human study measurement.
+- Return a null pass/fail value for inapplicable metrics instead of reporting an invalid denominator as a failed rule.
+- Clarify the seven operational measures versus DT in reports, the dashboard, public guides, and the manuscript. Exploratory thresholds remain unvalidated.
+
 ## 0.2.0 — 2026-10-16
 
 - Add `compare-agent` for fresh baseline and guarded custom-agent runs with explicit unguarded opt-in, paired traces, graphs, findings, and applicable metric changes.

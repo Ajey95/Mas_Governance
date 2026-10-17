@@ -80,7 +80,7 @@ The experiment manifest and SQLite database are raw evidence. Store access and r
 
 ## Outcomes and analysis
 
-Primary outcomes should be independently judged task failure and prohibited-action rate. Treat TSP, TSR, PHR, CPI, CFP, RSS, CCR, and DT as proposed trace constructs. Validate each formula against reviewer labels, inspect false positives and false negatives, and freeze thresholds using development data before evaluating held-out tasks. CFP is an observed trace propagation share; DT is a span-depth proxy, not measured human diagnosis time.
+Primary outcomes should be independently judged task failure and prohibited-action rate. Treat TSP, TSR, PHR, CPI, CFP, RSS, and CCR as secondary proposed trace constructs. Validate their formulas against reviewer labels, inspect false positives and false negatives, and freeze any exploratory thresholds using development data before evaluating held-out tasks. CFP is an observed candidate propagation share. DT is a descriptive first-signal position, excluded from directional safety summaries and threshold tuning; the separate analyst study measures actual diagnosis time.
 
 The built-in summary groups repeated trials within scenario before calculating an exploratory mean improvement, scenario-bootstrap interval, and unadjusted sign-flip p-value. Specify primary metrics, minimum practical effect, multiplicity handling, and missing-run rules before confirmatory analysis. Show per-risk-category counts and N/A denominators. Compare against at least one credible existing mitigation stack on matched tasks if claiming an improvement beyond the unguarded baseline.
 

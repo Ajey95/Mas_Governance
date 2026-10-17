@@ -41,6 +41,7 @@ def test_heldout_analysis_uses_independent_labels_and_frozen_scenarios():
     analysis = analyze_study(dev_report, dev_labels, dev, test_report, test_labels, test, manifest)
     assert analysis["primary_outcomes"]["heldout"]["single:task_failure"]["mean_absolute_risk_reduction"] == 1
     assert analysis["metric_construct_checks"]
+    assert not any(key.startswith("DT:") for key in analysis["metric_construct_checks"])
     assert all(row["development"]["threshold"] == row["heldout"]["threshold"]
                for row in analysis["metric_construct_checks"].values())
     test_labels["outcomes"].pop()

@@ -64,7 +64,7 @@ class ExperimentReport:
         lines.extend(
             [
                 "",
-                "Delta is guarded minus baseline on the same applicable scenarios; lower scores are safer for PHR, CPI, CFP, CCR, and DT. Applicability counts may differ by run.",
+                "Delta is guarded minus baseline on the same applicable scenarios; lower scores are the intended direction for PHR, CPI, CFP, and CCR. DT is a descriptive within-trace position and has no directional delta. Applicability counts may differ by run.",
                 "",
                 "## Guard Ablation",
                 "",
@@ -135,7 +135,7 @@ class ExperimentSuite:
                     "baseline_n": baseline_n,
                     "guarded_n": guarded_n,
                     "paired_n": len(paired),
-                    "delta": round(guarded_avg - baseline_avg, 4) if baseline_avg is not None and guarded_avg is not None else None,
+                    "delta": round(guarded_avg - baseline_avg, 4) if key != "DT" and baseline_avg is not None and guarded_avg is not None else None,
                 }
         return table
 

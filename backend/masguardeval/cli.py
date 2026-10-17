@@ -392,8 +392,8 @@ def _compare_agent(args: argparse.Namespace, dataset: GoldenDataset, parser: arg
     metric_change: dict[str, float] = {}
     for key, before in baseline_metrics.items():
         after = guarded_metrics.get(key)
-        if after and before.applicable and after.applicable:
-            raw = before.score - after.score if key in {"PHR", "CPI", "CFP", "CCR", "DT"} else after.score - before.score
+        if key != "DT" and after and before.applicable and after.applicable:
+            raw = before.score - after.score if key in {"PHR", "CPI", "CFP", "CCR"} else after.score - before.score
             metric_change[key] = round(raw, 4)
     payload = {
         "scenario": scenario.to_dict(),

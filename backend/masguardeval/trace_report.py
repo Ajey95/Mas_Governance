@@ -141,12 +141,14 @@ def trace_report_markdown(report: dict[str, Any]) -> str:
         f"- MASGuardEval version: {safe(provenance['masguardeval_version'])}",
         "", safe(provenance["hash_scope"]), "",
         "## Evaluation", "", safe(evaluation["scope"]), "",
-        "| Metric | Score | Threshold | Applicable | Passed | Interpretation |",
+        "| Metric | Score | Reference threshold | Applicable | Reference rule met | Interpretation |",
         "| --- | ---: | ---: | --- | --- | --- |",
     ]
     for metric in evaluation["metrics"].values():
         score = metric["score"] if metric["applicable"] else "N/A"
-        lines.append(f"| {safe(metric['key'])} — {safe(metric['name'])} | {safe(score)} | {safe(metric['threshold'])} | {safe(metric['applicable'])} | {safe(metric['passed'])} | {safe(metric['interpretation'])} |")
+        threshold = "—" if metric["threshold"] is None else metric["threshold"]
+        rule = "—" if metric["passed"] is None else metric["passed"]
+        lines.append(f"| {safe(metric['key'])} — {safe(metric['name'])} | {safe(score)} | {safe(threshold)} | {safe(metric['applicable'])} | {safe(rule)} | {safe(metric['interpretation'])} |")
     lines += ["", "### Metric evidence", ""]
     for metric in evaluation["metrics"].values():
         lines.append(f"- **{safe(metric['key'])}** details: `{safe(json.dumps(metric['details'], ensure_ascii=False, sort_keys=True))}`")

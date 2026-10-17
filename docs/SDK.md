@@ -10,7 +10,7 @@ AutoGen, and CrewAI are in the [examples](../examples/README.md).
 For another codebase, install the published package:
 
 ```powershell
-python -m pip install "masguardeval==0.2.0"
+python -m pip install "masguardeval==0.2.1"
 ```
 
 For development from a repository checkout, use:
@@ -130,7 +130,7 @@ Each scenario should include:
 - `expected_safe_behavior`
 - `allowed_tools`
 - `blocked_tools`
-- `required_tools`
+- `required_tools` (explicit task obligations; omission means none, not all allowed tools)
 - `parameter_schema`
 - `metrics`
 
@@ -223,6 +223,11 @@ nodes. Record these links explicitly when testing failure propagation; otherwise
 the trace and policy decisions remain useful, while CFP cannot attribute a
 downstream failure to an earlier one.
 
+If a later failure was independently checked and has no recorded upstream
+dependency, set `metadata={"dependency_assessed": True}` on that failure event.
+Leave this flag absent when the relationship is unknown. CFP is N/A when a
+later failure has neither a resolved link nor this explicit assessment.
+
 ### Supply comparable metric evidence
 
 PHR checks recorded tool arguments against the scenario's parameter schema,
@@ -245,7 +250,8 @@ observations made by the adapter, not independent expert labels.
 
 For actual human diagnosis duration, use the separate
 [timed study protocol](PAPER_STUDY_PROTOCOL.md#timed-human-diagnosis). Runtime
-DT remains a span-position proxy.
+DT remains a descriptive first-signal position. Routine allow-guard spans are
+excluded, and DT is not used as a paired safety improvement or threshold gate.
 
 ## Add a Custom Guard
 
@@ -282,7 +288,7 @@ engine.register_guard(BlockDangerousTool())
 | `Trace` | Full execution record. |
 | `Span` | One trace operation. |
 | `GuardDecision` | Guard middleware output. |
-| `MetricResult` | Score, threshold, pass/fail, and details. |
+| `MetricResult` | Score, applicability, exploratory reference threshold/rule result, and evidence details. DT has null threshold and rule result. |
 | `TraceStore` | SQLite persistence for individual spans and completed traces. |
 | `PostgresTraceStore` | PostgreSQL JSONB persistence with the same store contract. |
 | `FrameworkSession` and `ToolSpec` | Guarded native tools for LangChain, LangGraph, AutoGen, and CrewAI. |
@@ -298,7 +304,11 @@ See [Integrations](INTEGRATIONS.md) for native framework examples and the Postgr
 
 ## Common Patterns
 
-### Fail CI if guarded execution fails a metric
+### Gate CI on a concrete policy invariant
+
+Metric thresholds are exploratory and are not a substitute for checking the
+behavior your application requires. For example, fail if a forbidden tool
+reached the executor:
 
 ```python
 from masguardeval import EvaluationEngine
@@ -306,9 +316,10 @@ from masguardeval import EvaluationEngine
 engine = EvaluationEngine.from_dataset_path("datasets/golden_scenarios.json")
 result = engine.evaluate("auth_001")
 
-failed = [key for key, metric in result.guarded_metrics.items() if metric.applicable and not metric.passed]
-if failed:
-    raise SystemExit(f"Guarded run failed metrics: {failed}")
+forbidden = set(result.scenario.blocked_tools)
+executed = [span for span in result.guarded_trace.spans if span.span_type == "tool_call"]
+if any(span.tool in forbidden for span in executed):
+    raise SystemExit("A forbidden tool reached the executor")
 ```
 
 ### Save dashboard payload
